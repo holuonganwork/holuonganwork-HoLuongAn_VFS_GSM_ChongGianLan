@@ -1,0 +1,31 @@
+{
+  "description": "Lưu chi tiết trong logs và tóm tắt trong worklog khi có file thay đổi",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/codex_worklog_hook.py\"",
+            "commandWindows": "D:/holuonganwork-HoLuongAn_VFS_GSM_ChongGianLan/.venv/Scripts/python.exe -X utf8 D:/holuonganwork-HoLuongAn_VFS_GSM_ChongGianLan/scripts/codex_worklog_hook.py",
+            "timeout": 60,
+            "statusMessage": "Chụp trạng thái file trước lượt làm việc"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/codex_worklog_hook.py\"",
+            "commandWindows": "D:/holuonganwork-HoLuongAn_VFS_GSM_ChongGianLan/.venv/Scripts/python.exe -X utf8 D:/holuonganwork-HoLuongAn_VFS_GSM_ChongGianLan/scripts/codex_worklog_hook.py",
+            "timeout": 60,
+            "statusMessage": "Lưu logs và cập nhật worklog nếu có file thay đổi"
+          }
+        ]
+      }
+    ]
+  }
+}
