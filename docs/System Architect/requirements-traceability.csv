@@ -1,0 +1,35 @@
+Requirement,Component,Documents,ADRs,BA_UAT,Delivery_step,Status
+FR-01,Ingestion,03-system-context.md;05-data-architecture.md;06-detection-and-decision-pipeline.md,ADR-003;ADR-006,UAT-01,M1;M2,Thiết kế đề xuất - chưa thực thi
+FR-02,Detection,06-detection-and-decision-pipeline.md;11-observability-and-model-feedback.md,ADR-004;ADR-011,UAT-02;UAT-03;UAT-04;UAT-05,M2,Thiết kế đề xuất - chưa thực thi
+FR-03,Incident registry,05-data-architecture.md;06-detection-and-decision-pipeline.md,ADR-005,UAT-06,M2,Thiết kế đề xuất - chưa thực thi
+FR-04,Case workflow,04-containers-and-components.md;06-detection-and-decision-pipeline.md;07-api-and-integration.md,ADR-007,UAT-07,M2,Thiết kế đề xuất - chưa thực thi
+FR-05,Search,05-data-architecture.md;07-api-and-integration.md;08-security-and-access-control.md,ADR-008;ADR-009,UAT-08;UAT-19;UAT-27,M2;M4,Thiết kế đề xuất - chưa thực thi
+FR-06,Timeline and evidence,04-containers-and-components.md;05-data-architecture.md,ADR-005;ADR-006,UAT-09,M2,Thiết kế đề xuất - chưa thực thi
+FR-07,Evidence,05-data-architecture.md;06-detection-and-decision-pipeline.md,ADR-006,UAT-10,M1;M2,Thiết kế đề xuất - chưa thực thi
+FR-08,Publication,06-detection-and-decision-pipeline.md;07-api-and-integration.md;08-security-and-access-control.md,ADR-001;ADR-009,UAT-11,M3,Thiết kế đề xuất - chưa thực thi
+FR-09,Driver portal and receipts,04-containers-and-components.md;07-api-and-integration.md;08-security-and-access-control.md,ADR-001;ADR-003;ADR-009,UAT-12;UAT-13,M3,Thiết kế đề xuất - chưa thực thi
+FR-10,Notification and SLA,06-detection-and-decision-pipeline.md;07-api-and-integration.md,ADR-003;ADR-007,UAT-14,M3,Thiết kế đề xuất - chưa thực thi
+FR-11,Proposal,06-detection-and-decision-pipeline.md;07-api-and-integration.md,ADR-004;ADR-007,UAT-15,M2;M3,Thiết kế đề xuất - chưa thực thi
+FR-12,Approval,05-data-architecture.md;06-detection-and-decision-pipeline.md;08-security-and-access-control.md,ADR-004;ADR-007;ADR-009,UAT-16,M2;M3,Thiết kế đề xuất - chưa thực thi
+FR-13,Publication and handoff,03-system-context.md;06-detection-and-decision-pipeline.md;07-api-and-integration.md,ADR-001;ADR-007,UAT-17,M3,Thiết kế đề xuất - chưa thực thi
+FR-14,Appeal,05-data-architecture.md;06-detection-and-decision-pipeline.md;07-api-and-integration.md,ADR-001;ADR-007,UAT-18,M3,Thiết kế đề xuất - chưa thực thi
+FR-15,Identity and access,03-system-context.md;08-security-and-access-control.md,ADR-009,UAT-19,M1;M3,Thiết kế đề xuất - chưa thực thi
+FR-16,Audit,05-data-architecture.md;08-security-and-access-control.md;11-observability-and-model-feedback.md,ADR-007;ADR-009,UAT-20,M1;M4,Thiết kế đề xuất - chưa thực thi
+FR-17,Export,05-data-architecture.md;07-api-and-integration.md;08-security-and-access-control.md,ADR-006;ADR-009,UAT-21,M4,Thiết kế đề xuất - chưa thực thi
+FR-18,Reporting,07-api-and-integration.md;11-observability-and-model-feedback.md,ADR-011,UAT-22,M4,Thiết kế đề xuất - chưa thực thi
+FR-19,Rule governance,06-detection-and-decision-pipeline.md;07-api-and-integration.md;11-observability-and-model-feedback.md,ADR-004;ADR-011,UAT-23,M2;M4,Thiết kế đề xuất - chưa thực thi
+FR-20,Data lifecycle,05-data-architecture.md;08-security-and-access-control.md;09-deployment-and-infrastructure.md,ADR-013,UAT-24,M1;M4,Thiết kế đề xuất - chưa thực thi
+FR-21,Label and evaluation governance,11-observability-and-model-feedback.md,ADR-011,UAT-25,M4,Thiết kế đề xuất - chưa thực thi
+FR-22,Driver issue intake,03-system-context.md;07-api-and-integration.md;13-migration-and-rollout-plan.md,ADR-001;ADR-005,UAT-26,M3,Thiết kế đề xuất - chưa thực thi
+NFR-01,Authorization,08-security-and-access-control.md;10-performance-scalability-and-reliability.md,ADR-009,UAT-19;UAT-21,M1;M3;M4,Thiết kế đề xuất - chưa thực thi
+NFR-02,Data protection,05-data-architecture.md;08-security-and-access-control.md;11-observability-and-model-feedback.md,ADR-006;ADR-009,UAT-19;UAT-20;UAT-21,M1;M3;M4,Thiết kế đề xuất - chưa thực thi
+NFR-03,Evidence integrity,05-data-architecture.md;08-security-and-access-control.md,ADR-006,UAT-10;UAT-21,M1;M4,Thiết kế đề xuất - chưa thực thi
+NFR-04,Transactions and idempotency,04-containers-and-components.md;06-detection-and-decision-pipeline.md;07-api-and-integration.md,ADR-003;ADR-007,UAT-06;UAT-13;UAT-16,M1;M2;M3,Thiết kế đề xuất - chưa thực thi
+NFR-05,Search and API performance,05-data-architecture.md;10-performance-scalability-and-reliability.md,ADR-008,UAT-27,M2;M4,Thiết kế đề xuất - chưa thực thi
+NFR-06,Freshness and watermarks,06-detection-and-decision-pipeline.md;10-performance-scalability-and-reliability.md;11-observability-and-model-feedback.md,ADR-003;ADR-008,UAT-01;UAT-27,M2;M4,Thiết kế đề xuất - chưa thực thi
+NFR-07,HA and disaster recovery,09-deployment-and-infrastructure.md;10-performance-scalability-and-reliability.md,ADR-010,UAT-28,M1;M4,Thiết kế đề xuất - chưa thực thi
+NFR-08,Mobile usability,04-containers-and-components.md;13-migration-and-rollout-plan.md,ADR-001,UAT-13,M3;M4,Thiết kế đề xuất - chưa thực thi
+NFR-09,Uploads and durable drafts,04-containers-and-components.md;07-api-and-integration.md;08-security-and-access-control.md,ADR-003;ADR-006;ADR-009,UAT-12;UAT-13,M3;M4,Thiết kế đề xuất - chưa thực thi
+NFR-10,Audit and time,05-data-architecture.md;06-detection-and-decision-pipeline.md;08-security-and-access-control.md,ADR-007;ADR-009,UAT-14;UAT-20,M1;M3;M4,Thiết kế đề xuất - chưa thực thi
+NFR-11,Explainability and quality,06-detection-and-decision-pipeline.md;11-observability-and-model-feedback.md,ADR-004;ADR-011,UAT-02;UAT-03;UAT-04;UAT-05;UAT-22;UAT-25,M2;M4,Thiết kế đề xuất - chưa thực thi
+NFR-12,Version and lifecycle recovery,05-data-architecture.md;09-deployment-and-infrastructure.md;13-migration-and-rollout-plan.md,ADR-010;ADR-013;ADR-014,UAT-23;UAT-24;UAT-28,M1;M4,Thiết kế đề xuất - chưa thực thi

@@ -27,6 +27,10 @@ See [implemented architecture and upgrade scope](docs/architecture.md),
 [rule definitions](docs/fraud-rules.md), and [data model](docs/data-model.md).
 The [original milestone contract](docs/implementation-plan.md) is retained as historical context.
 
+Bộ [System Architect — SA 1.0](docs/System%20Architect/README.md) thiết kế đích theo BA mới,
+gồm phối hợp tài xế–kiểm soát, phê duyệt độc lập và khiếu nại. Đây là lộ trình kiến trúc có thể
+điều chỉnh qua ADR; các năng lực đích chưa đồng nghĩa đã có trong prototype mô tả bên dưới.
+
 For an existing installation, apply `alembic -c backend/alembic.ini upgrade head` before restarting
 the backend. Migration `0002_alert_decisions` preserves existing cases and explanation history;
 the two explanation write endpoints are removed. Old pending cases can resume internal review.
