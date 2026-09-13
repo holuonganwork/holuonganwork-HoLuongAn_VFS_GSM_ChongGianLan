@@ -1,159 +1,95 @@
-import hashlib
-import json
+"""Synchronous orchestration for the transitional modular monolith."""
+
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import RuleConfig
-from app.core.enums import CaseStatus
-from app.fraud import device_detector, gps_detector, promotion_detector, repeated_trip_detector
-from app.fraud.scoring import score_signals
+from app.core.config import DecisionPolicyConfig, RuleConfig
+from app.core.enums import DecisionOutcome
+from app.fraud.correlation import correlate_signals
+from app.fraud.providers import Detector, RiskAssessor, RuleDetectorAdapter, RuleRiskAssessor
 from app.fraud.types import DriverObservation, Signal
-from app.models.entities import (
-    Device,
-    Driver,
-    DriverDevice,
-    EvidenceSource,
-    FraudCase,
-    FraudEvidence,
-    GPSEvent,
-    Promotion,
-    Trip,
-)
+from app.models.entities import FraudCase
+from app.processing.observations import load_observations
+from app.services.detection import process_alert
 
 logger = logging.getLogger(__name__)
-DETECTORS = (
-    gps_detector.detect,
-    repeated_trip_detector.detect,
-    device_detector.detect,
-    promotion_detector.detect,
-)
 
 
 @dataclass(frozen=True)
 class DetectionSummary:
-    drivers_checked: int
-    cases_created: int
-    cases_existing: int
-    evidence_created: int
+    drivers_checked: int = 0
+    cases_created: int = 0
+    cases_existing: int = 0
+    evidence_created: int = 0
+    alerts_created: int = 0
+    alerts_existing: int = 0
+    auto_cleared: int = 0
+    auto_fraud: int = 0
+    human_review: int = 0
 
 
 def detect_driver(observation: DriverObservation, config: RuleConfig) -> list[Signal]:
-    return [signal for detector in DETECTORS for signal in detector(observation, config)]
+    return RuleDetectorAdapter().detect(observation, config)
 
 
 def persist_case(
     session: Session, driver_id: int, signals: list[Signal], config: RuleConfig
 ) -> tuple[FraudCase | None, bool]:
-    if not signals:
+    """Compatibility entry point for one incident, routed through alert and policy.
+
+    Batch callers use run_detection, which supports several incidents per driver.
+    """
+    candidates = correlate_signals(driver_id, signals)
+    if not candidates:
         return None, False
-    # Serialize detection for this driver. PostgreSQL releases the lock at transaction end.
-    driver = session.scalar(select(Driver).where(Driver.id == driver_id).with_for_update())
-    if driver is None:
-        raise ValueError(f"Unknown driver {driver_id}")
-    canonical_signals = sorted(
-        [signal.model_dump(mode="json") for signal in signals],
-        key=lambda value: json.dumps(value, sort_keys=True),
+    if len(candidates) != 1:
+        raise ValueError("Signals span multiple incidents; use run_detection")
+    candidate = candidates[0]
+    record = process_alert(
+        session,
+        candidate,
+        RuleRiskAssessor().assess(candidate, config),
+        config,
+        DecisionPolicyConfig(),
     )
-    fingerprint = hashlib.sha256(
-        json.dumps(
-            {
-                "driver_id": driver_id,
-                "signals": canonical_signals,
-                "rule_config": config.model_dump(mode="json"),
-            },
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode()
-    ).hexdigest()
-    existing = session.scalar(
-        select(FraudCase).where(FraudCase.detection_fingerprint == fingerprint)
-    )
-    if existing is not None:
-        return existing, False
-    score = score_signals(signals, config)
-    assert score.primary_category is not None
-    case = FraudCase(
-        driver_id=driver_id,
-        fraud_type=score.primary_category,
-        fraud_types=sorted(score.contributions),
-        risk_score=score.total,
-        score_breakdown=score.contributions,
-        rule_config=config.model_dump(mode="json"),
-        detection_fingerprint=fingerprint,
-        status=CaseStatus.DETECTED,
-    )
-    session.add(case)
-    session.flush()
-    for signal in sorted(signals, key=lambda item: (item.fraud_type, item.signal, item.source_id)):
-        evidence = FraudEvidence(
-            case_id=case.id,
-            fraud_type=signal.fraud_type,
-            evidence_type=signal.signal,
-            source_type=signal.source_type,
-            source_id=signal.source_id,
-            severity=signal.severity,
-            score=config.weights[signal.fraud_type],
-            description=signal.description,
-            evidence_data=signal.model_dump(mode="json")["details"],
-        )
-        session.add(evidence)
-        session.flush()
-        refs = {(ref.source_type, ref.source_id) for ref in signal.sources}
-        refs.add((signal.source_type, signal.source_id))
-        for source_type, source_id in sorted(refs):
-            session.add(
-                EvidenceSource(
-                    evidence_id=evidence.id,
-                    source_type=source_type,
-                    source_id=source_id,
-                    **{f"{source_type.value}_id": source_id},
-                )
-            )
-    session.flush()
-    return case, True
+    return record.case, record.created
 
 
-def run_detection(session: Session, config: RuleConfig | None = None) -> DetectionSummary:
-    """Caller owns the transaction. A small batch fits the milestone's 5,000 trips."""
+def run_detection(
+    session: Session,
+    config: RuleConfig | None = None,
+    policy: DecisionPolicyConfig | None = None,
+    *,
+    detector: Detector | None = None,
+    assessor: RiskAssessor | None = None,
+) -> DetectionSummary:
+    """Caller owns the transaction; model/ensemble adapters can replace either provider."""
     config = config or RuleConfig()
-    drivers = {driver.id: driver for driver in session.scalars(select(Driver).order_by(Driver.id))}
-    trips: dict[int, list[Trip]] = defaultdict(list)
-    for trip in session.scalars(select(Trip).order_by(Trip.id)):
-        trips[trip.driver_id].append(trip)
-    gps: dict[int, list[GPSEvent]] = defaultdict(list)
-    for event in session.scalars(select(GPSEvent).order_by(GPSEvent.id)):
-        gps[event.driver_id].append(event)
-    devices = {device.id: device for device in session.scalars(select(Device))}
-    memberships = list(session.scalars(select(DriverDevice)))
-    by_device: dict[int, list[DriverDevice]] = defaultdict(list)
-    by_driver: dict[int, list[int]] = defaultdict(list)
-    for membership in memberships:
-        by_device[membership.device_id].append(membership)
-        by_driver[membership.driver_id].append(membership.device_id)
-    promotions = {promo.id: promo for promo in session.scalars(select(Promotion))}
-    created = existing = evidence_count = 0
-    for driver in drivers.values():
-        device_ids = sorted(by_driver[driver.id])
-        observation = DriverObservation(
-            driver=driver,
-            trips=trips[driver.id],
-            gps_events=gps[driver.id],
-            devices=[devices[device_id] for device_id in device_ids],
-            device_memberships=[item for device_id in device_ids for item in by_device[device_id]],
-            related_drivers=drivers,
-            promotions=promotions,
-        )
-        signals = detect_driver(observation, config)
-        case, is_new = persist_case(session, driver.id, signals, config)
-        if case is not None:
-            created += int(is_new)
-            existing += int(not is_new)
-            evidence_count += len(signals) if is_new else 0
-    summary = DetectionSummary(len(drivers), created, existing, evidence_count)
+    policy = policy or DecisionPolicyConfig()
+    detector = detector or RuleDetectorAdapter()
+    assessor = assessor or RuleRiskAssessor()
+    counts = dict.fromkeys(DetectionSummary.__dataclass_fields__, 0)
+    for observation in load_observations(session):
+        counts["drivers_checked"] += 1
+        signals = detector.detect(observation, config)
+        for candidate in correlate_signals(observation.driver.id, signals):
+            assessment = assessor.assess(candidate, config)
+            record = process_alert(session, candidate, assessment, config, policy)
+            counts["alerts_created" if record.created else "alerts_existing"] += 1
+            # Outcome counters count newly recorded decisions, not retry observations.
+            if record.created:
+                outcome_key = {
+                    DecisionOutcome.AUTO_CLEAR: "auto_cleared",
+                    DecisionOutcome.AUTO_FRAUD: "auto_fraud",
+                    DecisionOutcome.HUMAN_REVIEW: "human_review",
+                }[record.alert.decision_result.outcome]
+                counts[outcome_key] += 1
+            if record.case is not None:
+                counts["cases_created" if record.created else "cases_existing"] += 1
+                if record.created:
+                    counts["evidence_created"] += len(candidate.signals)
+    summary = DetectionSummary(**counts)
     logger.info("Detection batch finished: %s", summary)
     return summary

@@ -41,11 +41,29 @@ class RuleConfig(BaseModel):
         return self
 
 
+class DecisionPolicyConfig(BaseModel):
+    """Scaffold policy thresholds; calibrate before supplying production model estimates."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+    version: str = Field(default="policy-v1", min_length=1, max_length=100)
+    auto_clear_max_probability: float = Field(default=0.1, ge=0, le=1)
+    auto_clear_max_risk: int = Field(default=20, ge=0, le=100)
+    auto_fraud_min_probability: float = Field(default=0.95, ge=0, le=1)
+    min_confidence: float = Field(default=0.9, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def ordered_thresholds(self) -> "DecisionPolicyConfig":
+        if self.auto_clear_max_probability >= self.auto_fraud_min_probability:
+            raise ValueError("Automatic clear and fraud thresholds must not overlap")
+        return self
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     database_url: str = "postgresql+psycopg://fraud@localhost:5432/fraud_investigation"
     log_level: str = "INFO"
     fraud_rules: RuleConfig = Field(default_factory=RuleConfig)
+    decision_policy: DecisionPolicyConfig = Field(default_factory=DecisionPolicyConfig)
 
 
 @lru_cache

@@ -18,7 +18,17 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import CaseStatus, FraudType, Severity, SourceType
+from app.core.enums import (
+    FRAUD_TAXONOMY,
+    CaseStatus,
+    DecisionActor,
+    DecisionOutcome,
+    FraudCategory,
+    FraudType,
+    Impact,
+    Severity,
+    SourceType,
+)
 from app.db.base import JSON_DATA, Base, UTCDateTime, utc_now
 
 
@@ -131,6 +141,52 @@ class DriverDevice(Base):
     last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
+class FraudAlert(Base):
+    """Immutable correlated detection snapshot, including alerts cleared without a case."""
+
+    __tablename__ = "fraud_alerts"
+    __table_args__ = (
+        CheckConstraint("risk_score BETWEEN 0 AND 100", name="valid_risk_score"),
+        CheckConstraint("fraud_probability BETWEEN 0 AND 1", name="valid_probability"),
+        CheckConstraint("confidence BETWEEN 0 AND 1", name="valid_confidence"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id"), index=True)
+    correlation_key: Mapped[str] = mapped_column(String(64), index=True)
+    detection_fingerprint: Mapped[str] = mapped_column(String(64), unique=True)
+    fraud_type: Mapped[FraudType] = mapped_column(enum_column(FraudType, "fraud_type"))
+    fraud_types: Mapped[list[str]] = mapped_column(JSON_DATA)
+    severity: Mapped[Severity] = mapped_column(enum_column(Severity, "severity"))
+    risk_score: Mapped[int] = mapped_column(Integer)
+    fraud_probability: Mapped[float | None] = mapped_column(Float)
+    confidence: Mapped[float | None] = mapped_column(Float)
+    impact: Mapped[Impact] = mapped_column(enum_column(Impact, "impact"))
+    model_version: Mapped[str] = mapped_column(String(100))
+    assessment: Mapped[dict[str, Any]] = mapped_column(JSON_DATA)
+    rule_config: Mapped[dict[str, Any]] = mapped_column(JSON_DATA)
+    signals: Mapped[list[dict[str, Any]]] = mapped_column(JSON_DATA)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    decision_result: Mapped["DecisionResult"] = relationship(back_populates="alert")
+
+    @property
+    def fraud_category(self) -> FraudCategory:
+        return FRAUD_TAXONOMY[self.fraud_type]
+
+
+class DecisionResult(Base):
+    __tablename__ = "decision_results"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    alert_id: Mapped[int] = mapped_column(ForeignKey("fraud_alerts.id"), unique=True)
+    outcome: Mapped[DecisionOutcome] = mapped_column(
+        enum_column(DecisionOutcome, "decision_outcome"), index=True
+    )
+    reason: Mapped[str] = mapped_column(Text)
+    policy_version: Mapped[str] = mapped_column(String(100))
+    policy_config: Mapped[dict[str, Any]] = mapped_column(JSON_DATA)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    alert: Mapped[FraudAlert] = relationship(back_populates="decision_result")
+
+
 class FraudCase(TimestampMixin, Base):
     __tablename__ = "fraud_cases"
     __table_args__ = (
@@ -138,6 +194,9 @@ class FraudCase(TimestampMixin, Base):
         Index("ix_fraud_cases_status_risk", "status", "risk_score"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Null for investigations created before the architecture upgrade.
+    alert_id: Mapped[int | None] = mapped_column(ForeignKey("fraud_alerts.id"), unique=True)
+    alert: Mapped[FraudAlert | None] = relationship()
     driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id"), index=True)
     fraud_type: Mapped[FraudType] = mapped_column(enum_column(FraudType, "fraud_type"), index=True)
     fraud_types: Mapped[list[str]] = mapped_column(JSON_DATA)
@@ -154,6 +213,10 @@ class FraudCase(TimestampMixin, Base):
     explanations: Mapped[list["DriverExplanation"]] = relationship(order_by="DriverExplanation.id")
     decisions: Mapped[list["CaseDecision"]] = relationship(order_by="CaseDecision.id")
     status_events: Mapped[list["CaseStatusEvent"]] = relationship(order_by="CaseStatusEvent.id")
+
+    @property
+    def fraud_category(self) -> FraudCategory:
+        return FRAUD_TAXONOMY[self.fraud_type]
 
 
 class FraudEvidence(Base):
@@ -210,6 +273,8 @@ class EvidenceSource(Base):
 
 
 class DriverExplanation(Base):
+    """Deprecated storage retained for historical investigations; no write workflow."""
+
     __tablename__ = "driver_explanations"
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("fraud_cases.id"), index=True)
@@ -228,6 +293,11 @@ class CaseDecision(Base):
     decision: Mapped[CaseStatus] = mapped_column(enum_column(CaseStatus, "decision"))
     reviewer: Mapped[str] = mapped_column(String(200))
     reason: Mapped[str] = mapped_column(Text)
+    actor_type: Mapped[DecisionActor] = mapped_column(
+        enum_column(DecisionActor, "decision_actor"),
+        default=DecisionActor.HUMAN,
+        server_default="human",
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
 

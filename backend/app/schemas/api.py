@@ -3,11 +3,19 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.core.enums import CaseStatus, FraudType, Severity, SourceType
+from app.core.enums import (
+    CaseStatus,
+    DecisionActor,
+    DecisionOutcome,
+    FraudCategory,
+    FraudType,
+    Impact,
+    Severity,
+    SourceType,
+)
+from app.fraud.contracts import Assessment
+from app.fraud.types import Signal
 
-ExplanationText = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=10000)
-]
 ReasonText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
 ReviewerText = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)
@@ -65,6 +73,7 @@ class DecisionResponse(ORMResponse):
     decision: CaseStatus
     reviewer: str
     reason: str
+    actor_type: DecisionActor
     created_at: datetime
 
 
@@ -77,9 +86,45 @@ class StatusEventResponse(ORMResponse):
     created_at: datetime
 
 
+class PolicyDecisionResponse(ORMResponse):
+    id: int
+    alert_id: int
+    outcome: DecisionOutcome
+    reason: str
+    policy_version: str
+    policy_config: dict[str, Any]
+    created_at: datetime
+
+
+class AlertResponse(ORMResponse):
+    id: int
+    driver_id: int
+    correlation_key: str
+    fraud_category: FraudCategory
+    fraud_type: FraudType
+    fraud_types: list[FraudType]
+    severity: Severity
+    risk_score: int
+    fraud_probability: float | None
+    confidence: float | None
+    impact: Impact
+    model_version: str
+    decision_result: PolicyDecisionResponse
+    created_at: datetime
+
+
+class AlertDetailResponse(AlertResponse):
+    detection_fingerprint: str
+    assessment: Assessment
+    rule_config: dict[str, Any]
+    signals: list[Signal]
+
+
 class CaseResponse(ORMResponse):
     id: int
     driver_id: int
+    alert_id: int | None
+    fraud_category: FraudCategory
     fraud_type: FraudType
     fraud_types: list[FraudType]
     risk_score: int
@@ -90,16 +135,12 @@ class CaseResponse(ORMResponse):
 
 
 class CaseDetailResponse(CaseResponse):
+    alert: AlertResponse | None
     rule_config: dict[str, Any]
     evidence: list[EvidenceResponse]
-    explanations: list[ExplanationResponse]
+    explanations: list[ExplanationResponse] = Field(description="Read-only legacy history")
     decisions: list[DecisionResponse]
     status_events: list[StatusEventResponse]
-
-
-class ExplanationRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    explanation: ExplanationText
 
 
 class ReviewRequest(BaseModel):

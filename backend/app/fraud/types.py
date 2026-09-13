@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue, computed_field
 
-from app.core.enums import FraudType, Severity, SourceType
+from app.core.enums import FRAUD_TAXONOMY, FraudCategory, FraudType, Severity, SourceType
 from app.models.entities import Device, Driver, DriverDevice, GPSEvent, Promotion, Trip
 
 
@@ -22,6 +22,11 @@ class Signal(BaseModel):
     source_id: int
     details: dict[str, JsonValue]
     sources: list[SourceReference]
+
+    @computed_field
+    @property
+    def fraud_category(self) -> FraudCategory:
+        return FRAUD_TAXONOMY[self.fraud_type]
 
 
 @dataclass(frozen=True)

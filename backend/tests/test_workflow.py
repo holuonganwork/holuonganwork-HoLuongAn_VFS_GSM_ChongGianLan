@@ -8,9 +8,7 @@ from app.services.cases import (
     InvalidTransitionError,
     decide_case,
     get_case,
-    request_explanation,
     start_review,
-    submit_explanation,
     transition,
 )
 from sqlalchemy import func, select
@@ -58,23 +56,18 @@ def test_full_review_flow_preserves_driver_status_and_terminal_state(
     case, _ = persist_case(session, 1, [signal], RuleConfig())
     session.commit()
     start_review(session, case.id, "reviewer", "Inspect evidence")
-    request_explanation(session, case.id, "reviewer", "Explain this GPS segment")
-    explanation = submit_explanation(session, case.id, "GPS signal loss")
     decision = decide_case(
         session, case.id, CaseStatus.DISMISSED, "reviewer", "Signal loss verified"
     )
     session.commit()
-    assert explanation.attachment_metadata == []
     assert decision.reason == "Signal loss verified"
     assert session.get(Driver, 1).status == "active"
     same, created = persist_case(session, 1, [signal], RuleConfig())
     assert not created and same.status == CaseStatus.DISMISSED
-    assert session.scalar(select(func.count()).select_from(CaseStatusEvent)) == 4
+    assert session.scalar(select(func.count()).select_from(CaseStatusEvent)) == 2
     assert session.scalar(select(func.count()).select_from(CaseDecision)) == 1
     with pytest.raises(InvalidTransitionError):
         start_review(session, case.id, "reviewer", "Try reopening")
-    with pytest.raises(InvalidTransitionError):
-        submit_explanation(session, case.id, "Late explanation")
     with pytest.raises(InvalidTransitionError):
         decide_case(session, case.id, CaseStatus.CONFIRMED_FRAUD, "reviewer", "Overwriting")
 
@@ -89,13 +82,10 @@ def test_transition_matrix(
     session.flush()
     valid_pairs = {
         ("detected", "under_review"),
-        ("under_review", "awaiting_driver_explanation"),
         ("under_review", "dismissed"),
         ("under_review", "confirmed_fraud"),
-        ("awaiting_driver_explanation", "driver_responded"),
+        ("awaiting_driver_explanation", "under_review"),
         ("driver_responded", "under_review"),
-        ("driver_responded", "dismissed"),
-        ("driver_responded", "confirmed_fraud"),
     }
     if (initial, target) in valid_pairs:
         transition(session, case, target, "test-reviewer", "Test transition")

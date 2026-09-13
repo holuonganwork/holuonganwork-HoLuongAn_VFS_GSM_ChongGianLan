@@ -29,11 +29,15 @@ def test_api_full_review_flow_and_original_evidence(
     review = {"reviewer": "control_user_01", "reason": "Inspecting GPS records"}
     assert client.post(f"/fraud-cases/{case_id}/review", json=review).status_code == 200
     assert (
-        client.post(f"/fraud-cases/{case_id}/request-explanation", json=review).status_code == 200
+        client.post(f"/fraud-cases/{case_id}/request-explanation", json=review).status_code == 404
     )
-    response = client.post(f"/fraud-cases/{case_id}/explanation", json={"explanation": "GPS loss"})
-    assert response.status_code == 201
-    assert response.json()["attachment_metadata"] == []
+    assert (
+        client.post(
+            f"/fraud-cases/{case_id}/explanation", json={"explanation": "GPS loss"}
+        ).status_code
+        == 404
+    )
+    assert client.get(f"/fraud-cases/{case_id}").json()["explanations"] == []
     decision = {"decision": "dismissed", **review}
     assert client.post(f"/fraud-cases/{case_id}/decision", json=decision).status_code == 201
     assert client.get(f"/fraud-cases/{case_id}").json()["status"] == "dismissed"
@@ -92,7 +96,7 @@ def test_api_rejects_invalid_inputs_and_state_changes(
         client.post(
             f"/fraud-cases/{case_id}/explanation", json={"explanation": "Too early"}
         ).status_code
-        == 409
+        == 404
     )
     for patch in (
         {"reviewer": "   "},
@@ -106,7 +110,7 @@ def test_api_rejects_invalid_inputs_and_state_changes(
         )
     assert (
         client.post(f"/fraud-cases/{case_id}/explanation", json={"explanation": " "}).status_code
-        == 422
+        == 404
     )
 
 

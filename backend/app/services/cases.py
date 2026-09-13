@@ -7,7 +7,7 @@ from app.core.enums import CaseStatus, FraudType
 from app.models.entities import (
     CaseDecision,
     CaseStatusEvent,
-    DriverExplanation,
+    FraudAlert,
     FraudCase,
     FraudEvidence,
 )
@@ -26,16 +26,12 @@ class InvalidTransitionError(Exception):
 ALLOWED_TRANSITIONS: dict[CaseStatus, set[CaseStatus]] = {
     CaseStatus.DETECTED: {CaseStatus.UNDER_REVIEW},
     CaseStatus.UNDER_REVIEW: {
-        CaseStatus.AWAITING_DRIVER_EXPLANATION,
         CaseStatus.DISMISSED,
         CaseStatus.CONFIRMED_FRAUD,
     },
-    CaseStatus.AWAITING_DRIVER_EXPLANATION: {CaseStatus.DRIVER_RESPONDED},
-    CaseStatus.DRIVER_RESPONDED: {
-        CaseStatus.UNDER_REVIEW,
-        CaseStatus.DISMISSED,
-        CaseStatus.CONFIRMED_FRAUD,
-    },
+    # Historical cases can return to internal review without waiting for a driver response.
+    CaseStatus.AWAITING_DRIVER_EXPLANATION: {CaseStatus.UNDER_REVIEW},
+    CaseStatus.DRIVER_RESPONDED: {CaseStatus.UNDER_REVIEW},
     CaseStatus.DISMISSED: set(),
     CaseStatus.CONFIRMED_FRAUD: set(),
 }
@@ -50,6 +46,7 @@ def get_case(session: Session, case_id: int, *, lock: bool = False) -> FraudCase
             selectinload(FraudCase.explanations),
             selectinload(FraudCase.decisions),
             selectinload(FraudCase.status_events),
+            selectinload(FraudCase.alert).selectinload(FraudAlert.decision_result),
         )
     )
     if lock:
@@ -103,25 +100,26 @@ def start_review(session: Session, case_id: int, reviewer: str, reason: str) -> 
     return case
 
 
-def request_explanation(session: Session, case_id: int, reviewer: str, reason: str) -> FraudCase:
-    case = get_case(session, case_id, lock=True)
-    transition(session, case, CaseStatus.AWAITING_DRIVER_EXPLANATION, reviewer, reason)
-    return case
-
-
-def submit_explanation(session: Session, case_id: int, explanation: str) -> DriverExplanation:
-    case = get_case(session, case_id, lock=True)
-    transition(
-        session,
-        case,
-        CaseStatus.DRIVER_RESPONDED,
-        f"driver:{case.driver_id}",
-        "Driver explanation submitted",
+def review_queue(session: Session, limit: int = 50, offset: int = 0) -> list[FraudCase]:
+    """Only unresolved cases, including historical cases awaiting an internal reviewer."""
+    return list(
+        session.scalars(
+            select(FraudCase)
+            .where(
+                FraudCase.status.in_(
+                    [
+                        CaseStatus.DETECTED,
+                        CaseStatus.UNDER_REVIEW,
+                        CaseStatus.AWAITING_DRIVER_EXPLANATION,
+                        CaseStatus.DRIVER_RESPONDED,
+                    ]
+                )
+            )
+            .order_by(FraudCase.risk_score.desc(), FraudCase.id)
+            .offset(offset)
+            .limit(limit)
+        )
     )
-    record = DriverExplanation(case_id=case.id, explanation=explanation)
-    case.explanations.append(record)
-    session.flush()
-    return record
 
 
 def decide_case(

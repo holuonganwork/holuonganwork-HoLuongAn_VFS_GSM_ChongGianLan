@@ -18,8 +18,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="Driver Fraud Investigation System",
-    description="Explainable anomaly signals and evidence for human review. Local development API.",
-    version="0.1.0",
+    description="Signals, correlated alerts, decision policy and exception review. Local API.",
+    version="0.2.0",
     lifespan=lifespan,
 )
 app.include_router(router)

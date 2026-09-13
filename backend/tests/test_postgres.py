@@ -108,19 +108,6 @@ def test_postgres_complete_milestone_flow(postgres_engine: Engine) -> None:
             assert client.post(f"/fraud-cases/{gps_case_id}/review", json=actor).status_code == 200
             assert (
                 client.post(
-                    f"/fraud-cases/{gps_case_id}/request-explanation", json=actor
-                ).status_code
-                == 200
-            )
-            assert (
-                client.post(
-                    f"/fraud-cases/{gps_case_id}/explanation",
-                    json={"explanation": "GPS became unstable in a tunnel"},
-                ).status_code
-                == 201
-            )
-            assert (
-                client.post(
                     f"/fraud-cases/{gps_case_id}/decision", json={"decision": "dismissed", **actor}
                 ).status_code
                 == 201

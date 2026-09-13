@@ -5,21 +5,21 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.core.enums import CaseStatus, FraudType
+from app.core.enums import CaseStatus, DecisionOutcome, FraudType
 from app.db.session import get_session
 from app.schemas.api import (
+    AlertDetailResponse,
+    AlertResponse,
     CaseDetailResponse,
     CaseResponse,
     DecisionRequest,
     DecisionResponse,
     DriverResponse,
     EvidenceResponse,
-    ExplanationRequest,
-    ExplanationResponse,
     ReviewRequest,
     SourceDataResponse,
 )
-from app.services import cases, sources
+from app.services import alerts, cases, sources
 
 router = APIRouter()
 DB = Annotated[Session, Depends(get_session)]
@@ -94,21 +94,31 @@ def start_review(case_id: RecordID, body: ReviewRequest, session: DB) -> object:
     return cases.start_review(session, case_id, body.reviewer, body.reason)
 
 
-@router.post(
-    "/fraud-cases/{case_id}/request-explanation", response_model=CaseDetailResponse, tags=["review"]
-)
-def request_explanation(case_id: RecordID, body: ReviewRequest, session: DB) -> object:
-    return cases.request_explanation(session, case_id, body.reviewer, body.reason)
+@router.get("/review-queue", response_model=list[CaseResponse], tags=["review"])
+def review_queue(session: DB, limit: Limit = 50, offset: Offset = 0) -> object:
+    return cases.review_queue(session, limit, offset)
 
 
-@router.post(
-    "/fraud-cases/{case_id}/explanation",
-    response_model=ExplanationResponse,
-    status_code=201,
-    tags=["review"],
-)
-def submit_explanation(case_id: RecordID, body: ExplanationRequest, session: DB) -> object:
-    return cases.submit_explanation(session, case_id, body.explanation)
+@router.get("/fraud-alerts", response_model=list[AlertResponse], tags=["alerts"])
+def list_alerts(
+    session: DB,
+    outcome: DecisionOutcome | None = None,
+    driver_id: Annotated[int | None, Query(gt=0)] = None,
+    limit: Limit = 50,
+    offset: Offset = 0,
+) -> object:
+    return alerts.list_alerts(
+        session,
+        outcome=outcome,
+        driver_id=driver_id,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/fraud-alerts/{alert_id}", response_model=AlertDetailResponse, tags=["alerts"])
+def get_alert(alert_id: RecordID, session: DB) -> object:
+    return alerts.get_alert(session, alert_id)
 
 
 @router.post(

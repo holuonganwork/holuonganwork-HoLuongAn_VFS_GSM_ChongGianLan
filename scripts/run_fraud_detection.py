@@ -1,4 +1,4 @@
-"""Run the configured fraud rules and persist cases and evidence atomically."""
+"""Run processing, detection, alert correlation and decision policy atomically."""
 
 import json
 import sys
@@ -18,7 +18,7 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     with Session(get_engine()) as session, session.begin():
-        summary = run_detection(session, settings.fraud_rules)
+        summary = run_detection(session, settings.fraud_rules, settings.decision_policy)
     print(json.dumps(asdict(summary)))
 
 
