@@ -1,0 +1,401 @@
+@media (min-width: 1600px) {
+  .sidebar {
+    width: 250px;
+  }
+  .main-shell {
+    margin-left: 250px;
+  }
+  main {
+    padding-top: 38px;
+  }
+  .metrics {
+    gap: 22px;
+  }
+  .metric-card {
+    padding: 21px 23px;
+  }
+  .metric-heading {
+    font-size: 12px;
+  }
+  .metric-caption {
+    font-size: 11px;
+  }
+  .map-viewport {
+    padding-top: 20px;
+  }
+  .panel-heading {
+    padding: 23px 25px;
+  }
+}
+@media (max-width: 1250px) {
+  .sidebar {
+    width: 206px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .main-shell {
+    margin-left: 206px;
+  }
+  main {
+    padding: 26px 24px 10px;
+  }
+  .topbar {
+    padding: 0 24px;
+  }
+  .workspace {
+    font-size: 10px;
+  }
+  .workspace small {
+    font-size: 8px;
+  }
+  .metric-card {
+    padding: 15px;
+  }
+  .metric-heading {
+    font-size: 10px;
+  }
+  .rules-strip {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .rules-strip > div {
+    width: 100%;
+  }
+  .dashboard-bottom {
+    grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr);
+  }
+  .queue-panel td,
+  .queue-panel th {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+  .map-legend .map-tip {
+    display: none;
+  }
+  .version-pill {
+    display: none;
+  }
+  .panel-title p {
+    line-height: 1.5;
+  }
+}
+@media (max-width: 1000px) {
+  .sidebar {
+    width: 77px;
+    padding: 25px 12px 0;
+  }
+  .brand {
+    padding: 0;
+    justify-content: center;
+  }
+  .brand > span:last-child,
+  .workspace,
+  .nav-caption,
+  .sidebar nav a > span,
+  .scope-card,
+  .environment {
+    display: none;
+  }
+  .brand-mark {
+    width: 39px;
+  }
+  .sidebar nav {
+    margin-top: 35px;
+  }
+  .sidebar nav a {
+    justify-content: center;
+    padding: 13px;
+  }
+  .sidebar nav .icon {
+    width: 21px;
+    height: 21px;
+  }
+  .main-shell {
+    margin-left: 77px;
+  }
+  .metric-heading {
+    font-size: 10px;
+  }
+  .metric-icon {
+    width: 28px;
+    height: 28px;
+  }
+  .dashboard-bottom {
+    grid-template-columns: 1fr;
+  }
+  .outcome-panel #outcomes {
+    padding-bottom: 2px;
+  }
+  .outcome-rows {
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .outcome-rows > div {
+    flex: 1;
+    gap: 14px;
+  }
+  .outcome-rows > div > span:last-child {
+    gap: 8px;
+  }
+  .topbar {
+    height: 66px;
+  }
+  .page-heading {
+    margin-bottom: 24px;
+  }
+  .app-footer {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+@media (max-width: 700px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .metric-heading {
+    font-size: 11px;
+  }
+  .metric-value {
+    font-size: 27px;
+  }
+  .metric-caption {
+    font-size: 10px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  h1 {
+    font-size: 25px;
+  }
+  .page-heading .button {
+    align-self: flex-start;
+  }
+  .breadcrumb > span,
+  .breadcrumb > .icon {
+    display: none;
+  }
+  .topbar {
+    padding: 0 19px;
+  }
+  .topbar-right {
+    gap: 12px;
+  }
+  .connection {
+    font-size: 9px;
+  }
+  .topbar-divider {
+    display: none;
+  }
+  main {
+    padding: 23px 18px 10px;
+  }
+  .panel-heading {
+    padding: 17px;
+    flex-wrap: wrap;
+  }
+  .panel-title p {
+    font-size: 10px;
+  }
+  .map-footer {
+    padding: 10px 13px;
+  }
+  .map-legend {
+    gap: 9px;
+  }
+  .map-legend > span {
+    font-size: 8px;
+  }
+  .map-viewport {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .pipeline-note {
+    align-items: flex-start;
+    padding-top: 14px;
+  }
+  .pipeline-note > .icon {
+    margin-top: 3px;
+  }
+  .rules-strip {
+    gap: 17px;
+  }
+  .rules-strip > span {
+    width: calc(50% - 10px);
+  }
+  .app-footer {
+    padding: 18px;
+    font-size: 8px;
+    flex-direction: column;
+  }
+  .records-filters {
+    padding: 18px;
+  }
+  .filter-controls {
+    width: 100%;
+  }
+  .filter-controls label {
+    flex: 1;
+    min-width: 120px;
+  }
+  .filter-controls input,
+  .filter-controls select {
+    width: 100%;
+  }
+  .pagination {
+    padding: 15px;
+    font-size: 10px;
+  }
+  .outcome-rows {
+    display: block;
+  }
+  .outcome-rows > div {
+    margin: 14px 0;
+  }
+  .drawer-header {
+    padding: 20px;
+  }
+  .drawer-body {
+    padding: 20px;
+  }
+  .detail-list > div {
+    grid-template-columns: 100px 1fr;
+  }
+  .dashboard-notice {
+    align-items: flex-start;
+  }
+  .dashboard-notice > .icon {
+    margin-top: 3px;
+  }
+  .drawer-header h2 {
+    font-size: 19px;
+  }
+  .records-panel table {
+    min-width: 650px;
+  }
+  .queue-panel table {
+    min-width: 440px;
+  }
+}
+@media (max-width: 480px) {
+  .sidebar {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: 66px;
+    padding: 0 5px;
+    background: white;
+    border-right: 0;
+    border-top: 1px solid var(--border);
+    z-index: 20;
+  }
+  .sidebar .brand,
+  .sidebar-bottom {
+    display: none;
+  }
+  .sidebar nav {
+    margin: 0;
+    flex-direction: row;
+    gap: 0;
+    height: 100%;
+    justify-content: space-around;
+  }
+  .sidebar nav a {
+    border-radius: 0;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 3px;
+    flex: 1;
+  }
+  .sidebar nav a > span:not(.nav-active-dot) {
+    display: block;
+    font-size: 8px;
+    white-space: nowrap;
+  }
+  .sidebar nav a > .nav-active-dot {
+    display: none;
+  }
+  .sidebar nav a[aria-current] {
+    background: #f4faf7;
+  }
+  .sidebar nav .icon {
+    width: 19px;
+    height: 19px;
+  }
+  .main-shell {
+    margin-left: 0;
+    padding-bottom: 66px;
+  }
+  .topbar {
+    height: 58px;
+  }
+  .topbar .avatar {
+    width: 27px;
+    height: 27px;
+  }
+  .page-heading p {
+    font-size: 11px;
+    line-height: 1.7;
+  }
+  main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .metric-heading {
+    font-size: 10px;
+  }
+  .metric-card {
+    padding: 13px;
+  }
+  .metric-caption {
+    font-size: 9px;
+  }
+  .panel-title h2 {
+    font-size: 14px;
+  }
+  .switch-label {
+    font-size: 10px;
+  }
+  .map-footer {
+    gap: 5px;
+  }
+  .map-legend {
+    gap: 8px;
+  }
+  .zoom-controls {
+    gap: 1px;
+  }
+  .zoom-controls .icon-button {
+    width: 25px;
+  }
+  .rules-strip {
+    padding: 17px;
+  }
+  .rules-strip > span {
+    font-size: 9px;
+  }
+  .data-timestamp {
+    font-size: 8px;
+  }
+  dialog {
+    max-height: calc(100dvh - 32px);
+  }
+  .badge {
+    font-size: 10px;
+  }
+  .detail-list > div {
+    grid-template-columns: 92px 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

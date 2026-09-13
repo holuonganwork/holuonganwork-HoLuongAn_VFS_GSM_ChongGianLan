@@ -1,27 +1,35 @@
 # Driver Fraud Investigation System
 
-Hệ thống phân tích dấu hiệu gian lận của tài xế và lưu bằng chứng để tài xế và đội kiểm soát
-phối hợp giải trình, xác minh và đưa ra quyết định.
+Hệ thống phát hiện gian lận theo bộ khung mới: tín hiệu → cảnh báo → chính sách quyết định →
+hồ sơ cần xử lý. Đội kiểm soát review các ngoại lệ; tài xế không tham gia workflow ứng dụng.
 
-Milestone 1 is a local backend for explainable driver anomaly detection and human investigation.
-It preserves original source references, numeric evidence, score contributions, driver explanations,
-and reviewer decisions. **An automated score never suspends a driver or confirms fraud.**
+The transitional framework separates detection from business decisions and case management.
+Existing rules, PostgreSQL source records, traceable evidence and audit history are retained.
 
 ## Architecture and stack
 
 ```text
-Trips / GPS / devices / promotions
-    -> four rule detectors -> category scoring -> cases + traceable evidence
-    -> human review -> driver explanation -> reviewer decision
+Sources -> processing -> rule/AI adapter -> signals -> correlated alerts
+    -> risk / probability / confidence / impact -> decision policy
+        -> Auto Clear: audit only
+        -> Auto Fraud: confirmed case + evidence + system decision
+        -> Human Review: pending case -> internal reviewer -> final decision
 ```
 
-One Python 3.11+ FastAPI application, PostgreSQL 16, SQLAlchemy 2, Alembic, Pydantic 2,
-Pytest, Docker and Docker Compose. Detectors are separate from the API and database writes.
-There is no LLM, broker, Redis, Kubernetes, or automatic enforcement.
+One Python 3.11+ FastAPI modular monolith, PostgreSQL 16, SQLAlchemy 2, Alembic, Pydantic 2,
+Pytest, Docker and Docker Compose. Existing rules provide risk scores; probability/confidence
+remain unknown, so the rule-only adapter currently routes alerts to review. The three policy
+branches are implemented and tested; actual ML/anomaly models and asynchronous infrastructure
+are later stages. No automated outcome changes driver status.
 
-See [architecture](docs/architecture.md), [rule definitions](docs/fraud-rules.md),
-[data model](docs/data-model.md), and [implementation contract](docs/implementation-plan.md).
-The completed local checks are recorded in [verification](docs/verification.md).
+See [implemented architecture and upgrade scope](docs/architecture.md),
+[target architecture](docs/new_architecture.md), [review recommendations](docs/architect-review-comparison),
+[rule definitions](docs/fraud-rules.md), and [data model](docs/data-model.md).
+The [original milestone contract](docs/implementation-plan.md) is retained as historical context.
+
+For an existing installation, apply `alembic -c backend/alembic.ini upgrade head` before restarting
+the backend. Migration `0002_alert_decisions` preserves existing cases and explanation history;
+the two explanation write endpoints are removed. Old pending cases can resume internal review.
 
 ## Quick start with Docker
 
@@ -61,8 +69,8 @@ With seed 42 and default rule settings, the expected investigations are:
 | D029 | Shared device with D027 and D028 | 25 |
 | D050 | Repeated trips + promotion abuse | 45 |
 
-This produces six cases and eight evidence records. These results describe injected fixtures,
-not production detection accuracy. A second identical detection run creates zero new cases.
+This produces six alerts, six review cases and eight evidence records. These results describe injected fixtures,
+not production detection accuracy. A second identical run creates zero new alerts or cases.
 
 The generator **requires an empty, migrated application database** and refuses to overwrite data.
 Use a separate database for a fresh experiment. For repeatable exports without database access:
@@ -105,19 +113,22 @@ than assuming case IDs equal driver IDs. All list endpoints accept `limit` (1–
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/drivers` | List drivers |
+| GET | `/fraud-alerts` | Alerts filtered by `outcome` and `driver_id`, including Auto Clear |
+| GET | `/fraud-alerts/{alert_id}` | Signal, assessment, rule and policy snapshots |
+| GET | `/review-queue` | Unresolved internal cases ordered by risk |
+| GET | `/drivers` | List driver metadata |
 | GET | `/drivers/{driver_id}` | Driver information |
 | GET | `/fraud-cases` | Filter by `fraud_type`, `status`, `min_risk_score`, `driver_id` |
 | GET | `/fraud-cases/{case_id}` | Case, contributions, rule snapshot, evidence, review history |
 | GET | `/fraud-cases/{case_id}/evidence` | All evidence for the case |
 | GET | `/fraud-cases/{case_id}/evidence/{evidence_id}/sources` | Original referenced source records |
 | POST | `/fraud-cases/{case_id}/review` | Start human review |
-| POST | `/fraud-cases/{case_id}/request-explanation` | Request a driver response |
-| POST | `/fraud-cases/{case_id}/explanation` | Submit the requested explanation |
 | POST | `/fraud-cases/{case_id}/decision` | Record a human final decision |
 
 The `fraud_type` filter matches **any contributing category**, including a secondary category.
-`fraud_type` in the case response is its primary category; `fraud_types` lists them all.
+`fraud_type` in the case response is its primary type; `fraud_types` lists them all.
+`fraud_category` supplies the parent taxonomy category. Case details include the alert/policy
+result when available; pre-upgrade cases retain a null alert link.
 
 For a case in `detected`, submit the following bodies in order using Swagger UI:
 
@@ -127,35 +138,25 @@ For a case in `detected`, submit the following bodies in order using Swagger UI:
    {"reviewer":"control_user_01","reason":"Inspecting the GPS source records."}
    ```
 
-2. `POST /fraud-cases/{case_id}/request-explanation`
-
-   ```json
-   {"reviewer":"control_user_01","reason":"Please explain the recorded location jump."}
-   ```
-
-3. `POST /fraud-cases/{case_id}/explanation`
-
-   ```json
-   {"explanation":"The GPS signal became unstable while travelling through a tunnel."}
-   ```
-
-4. `POST /fraud-cases/{case_id}/decision`
+2. `POST /fraud-cases/{case_id}/decision`
 
    ```json
    {"decision":"dismissed","reviewer":"control_user_01","reason":"Signal loss was verified against the source records."}
    ```
 
-Decisions are `dismissed` or `confirmed_fraud`. A reviewer may also decide directly from
-`under_review` when an explanation is unnecessary. Once an explanation has been requested, the
-workflow requires a response before deciding; there is no timeout/override mechanism in this milestone.
+Human decisions are `dismissed` or `confirmed_fraud`, submitted from `under_review`.
+Historical `awaiting_driver_explanation` and `driver_responded` cases can use `/review` to resume
+internal review. Explanation history remains readable; new explanations cannot be submitted.
+Case decisions identify their `actor_type` as `human` or `system`.
+
 Invalid transitions return HTTP 409, missing records 404, and invalid request bodies/filters 422.
 Terminal cases cannot be reopened. Confirming fraud changes the **case**, never the driver's status.
 
-This is a local prototype: authentication and authorization are not implemented. Reviewer names and
-driver explanations are supplied by the caller, not verified identities. Compose exposes services
+This is a local prototype: authentication and authorization are not implemented. Reviewer names are
+supplied by the caller, not verified identities. Compose exposes services
 only on loopback. Add authenticated roles and ownership checks before shared or production access.
 
-## Configure rules and scoring
+## Configure rules, scoring and policy
 
 Defaults live in `backend/app/core/config.py`. Set `FRAUD_RULES` to a JSON object in `.env` to override
 thresholds. To change weights, provide all four categories:
@@ -169,10 +170,14 @@ Each category contributes once; the total is capped at 100. Individual evidence 
 show their category's weight and must not be summed across repeated signals. `score_breakdown`
 contains the actual category contributions before the overall cap.
 
-Cases retain their rule settings and evidence snapshot. Identical sources and settings produce
-the same detection fingerprint; changing detected evidence or settings can create a new investigation
-snapshot. Earlier cases, explanations, and final decisions remain intact. There is no automatic
-case merging or incremental ingestion in this milestone.
+Alerts retain their signals, assessment and rule/policy settings. Set `DECISION_POLICY` as JSON
+(see `.env.example`) to configure the example decision thresholds. `risk_score` is distinct from
+`fraud_probability`, `confidence` and `impact`; rule weights do not imply prediction certainty.
+
+Signals sharing trip/GPS evidence form an incident; unrelated incidents from the same driver
+can create separate alerts/cases. Identical signals and settings reuse existing snapshots.
+Changes to evidence, model assessment or policy can create a new snapshot. Earlier decisions and
+historical cases remain intact. Cross-batch case merging and streaming ingestion are deferred.
 
 ## Migrations
 
@@ -187,7 +192,7 @@ alembic -c backend/alembic.ini downgrade -1
 ```
 
 Review autogenerated migrations before applying them, particularly enum check constraints.
-The initial migration is self-contained DDL; it does not import live application models.
+Migrations use self-contained DDL and do not import live application models.
 Rolling back the initial migration drops the application tables and their data. Use rollback on
 a disposable development database or after taking an appropriate backup.
 
@@ -202,7 +207,8 @@ docker compose exec backend python -m pytest -q
 ```
 
 Small deterministic fixtures test each detector, scoring, database constraints, source traceability,
-transaction rollback, all status transitions, API validation, and migration upgrade/downgrade.
+transaction rollback, internal review transitions, API validation, and migration upgrade/downgrade.
+New checks cover correlation, all policy branches, alert retries and preservation of legacy data.
 One end-to-end test also verifies the full 5,000-trip dataset. SQLite is used only for lightweight
 tests; the application database is PostgreSQL.
 
@@ -232,10 +238,28 @@ Adjust the example credentials to your local `.env`. Each PostgreSQL test create
 own randomly named schema. Without `TEST_DATABASE_URL`, these tests are explicitly skipped.
 The included GitHub Actions workflow supplies PostgreSQL and runs them on every push/PR.
 
+## Frontend dashboard
+
+The independent [frontend](frontend/README.md) provides a Vietnamese dashboard with an
+interactive system architecture map, live API reads for counts, alerts, cases, review queue
+and drivers, plus evidence/source inspection. Its JavaScript modules and CSS are separate
+from the Python backend. Start the API on port 8000, then in another terminal:
+
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Open **http://127.0.0.1:5173**. On Linux/macOS, use `npm` instead of `npm.cmd`.
+Vite proxies `/api/*` to the backend. The map remains available without an API connection;
+metrics report unavailable data rather than displaying demo values. Data views are read-only.
+See the frontend README for configuration, extension points, build and browser checks.
+
 ## Development boundaries
 
-No frontend, uploads, external payment integration, production deployment, model training, or
-driver punishment is included. GPS tracks are plausible interpolated synthetic paths, not road-network
+No uploads, broker/worker service, Redis/object storage, external payment integration,
+production deployment, model inference/training, or driver punishment is included. GPS tracks are plausible interpolated synthetic paths, not road-network
 simulations. Rule thresholds are examples requiring calibration and review against real data.
 Structured application logs use UTC timestamps and avoid logging explanation text or credentials.
 Database storage uses timezone-aware timestamps; monetary values use fixed precision decimals.
