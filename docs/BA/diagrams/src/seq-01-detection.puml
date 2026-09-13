@@ -1,0 +1,48 @@
+@startuml
+!include theme.puml
+title SEQ-D01 — Sequence: dữ liệu, dấu hiệu và hồ sơ
+autonumber
+actor "Chủ nguồn /\nlịch batch" as Source
+participant "Tiếp nhận và\nchất lượng dữ liệu" as Ingest
+database "Nguồn và bản chụp" as Raw
+participant "Bộ quy tắc\nđã phê duyệt" as Rules
+participant "Gom nghi vấn /\nquản lý hồ sơ" as Cases
+database "Hồ sơ + audit" as Store
+Source -> Ingest : Batch có source ID, version, event/received time
+Ingest -> Ingest : Kiểm schema, chủ thể, quan hệ, trùng
+alt Bản ghi không hợp lệ
+  Ingest -> Raw : Lưu phần cách ly và lý do
+  Ingest --> Source : Đối soát bản nhận / trùng / lỗi
+else Bản ghi đủ điều kiện
+  Ingest -> Raw : Lưu version, nguồn gốc, hash và watermark
+  Ingest -> Rules : Tập nguồn hợp lệ + metadata chất lượng
+  Rules -> Rules : Đánh giá theo rule version và tham số chụp lại
+  alt Thiếu dữ liệu bắt buộc hoặc không có dấu hiệu
+    Rules -> Store : Ghi kết quả đánh giá / phần không đánh giá được
+    note over Rules, Store
+      Không có dấu hiệu khác với dữ liệu không đánh giá được.
+      Không tạo kết luận tài xế không gian lận từ nguồn thiếu.
+    end note
+  else Có dấu hiệu
+    Rules -> Cases : Phép đo, ngưỡng, source IDs, rule version
+    Cases -> Store : Kiểm fingerprint và sự việc đã có
+    alt Cùng snapshot đã xử lý
+      Store --> Cases : Alert/case hiện có
+    else Bản mới hoặc sự việc mới
+      Cases -> Cases : Gom cùng sự việc; giữ đủ nhóm nghi vấn
+      Cases -> Store : Lưu alert/snapshot và audit;
+      note right of Cases
+        Sự việc đã có: liên kết để rà soát version.
+        Sự việc mới: tạo hồ sơ new.
+        Không ghi đè quyết định cũ.
+      end note
+      Cases -> Store : Tạo/liên kết công việc kiểm soát
+    end
+    Cases --> Source : Kết quả batch và mã tham chiếu
+  end
+end
+note over Rules, Cases
+  Risk score dùng ưu tiên. Không suy probability/confidence từ trọng số.
+  MVP không dùng auto_fraud để kết luận hoặc tự áp dụng chế tài.
+end note
+@enduml

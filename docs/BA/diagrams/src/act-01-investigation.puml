@@ -1,0 +1,54 @@
+@startuml
+!include theme.puml
+title ACT-D01 — Activity: từ nghi vấn đến kết luận
+|Hệ thống|
+start
+:Tạo/liên kết hồ sơ từ cảnh báo\nhoặc phản ánh đã tiếp nhận;
+|Kiểm soát viên|
+:Nhận việc và sàng lọc\nphạm vi, trùng, chất lượng;
+repeat
+  if (Ngoài phạm vi hoặc trùng?) then (Có)
+    :Đề xuất out_of_scope / duplicate\nvà hồ sơ hoặc nơi nhận liên quan;
+  else (Không)
+    :Tìm nguồn và kiểm tra\ncả căn cứ ủng hộ/phản bác;
+    if (Cần hỏi tài xế hoặc cần bảo đảm\ncơ hội giải trình trước xác nhận?) then (Có)
+      :Soạn sự việc, câu hỏi và bản công bố;
+      |Hệ thống|
+      :Thực hiện luồng ACT-D02\nGiao yêu cầu và tiếp nhận phản hồi;
+      |Tài xế|
+      :Có cơ hội xem và giải trình\nhoặc hết hạn đã giao hợp lệ;
+      |Kiểm soát viên|
+      :Đánh giá giải trình và tài liệu mới;
+    endif
+    :Chọn kết luận đề xuất\nconfirmed_fraud / not_fraud / inconclusive;
+  endif
+  |Hệ thống|
+  :Kiểm checklist, source/version, quyền\nvà RULE-08 nếu xác nhận gian lận;
+  if (Đủ điều kiện gửi duyệt?) then (Có)
+    :Chuyển pending_approval;
+    |Người duyệt độc lập|
+    :Kiểm tính độc lập, căn cứ\nvà phiên bản hiện hành;
+    if (Chấp thuận và không có\nthông tin mới chưa xét?) then (Có)
+      :Phê duyệt kèm lý do;
+      |Hệ thống|
+      :Kiểm version và lưu nguyên tử\nquyết định + audit + resolved;
+      if (Lưu thành công?) then (Có)
+        :Đánh dấu kết luận đã có hiệu lực;
+      else (Xung đột)
+        :Yêu cầu tải lại và rà soát\nthông tin mới hoặc quyết định đã có;
+      endif
+    else (Trả lại)
+      :Ghi lý do trả lại;
+      |Hệ thống|
+      :Chuyển investigating;
+    endif
+  else (Thiếu)
+    :Trả danh sách điều kiện cần bổ sung;
+  endif
+  |Kiểm soát viên|
+repeat while (Hồ sơ chưa có kết luận\nhiện hành được duyệt?) is (Tiếp tục) not (Đã duyệt)
+|Hệ thống|
+:Công bố bản phù hợp tài xế\nvà hướng dẫn khiếu nại;
+:Theo dõi giao và bàn giao thủ công\nnếu có; không tự thi hành chế tài;
+stop
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+!include theme.puml
+title ACT-D03 — Activity: khiếu nại và khắc phục
+|Tài xế|
+start
+:Chọn quyết định; gửi lý do,\ntài liệu và nhận biên nhận;
+|Hệ thống|
+:Kiểm danh tính, ownership, chống trùng;\ncase vẫn resolved, gắn cờ đang khiếu nại;
+if (Đúng hạn/vòng thông thường?) then (Có)
+  :Tiếp nhận submitted;
+else (Ngoại lệ)
+  |Trưởng kiểm soát / Pháp chế|
+  :Xét lý do trễ hoặc căn cứ mới trọng yếu;
+  if (Chấp nhận xem xét đặc biệt?) then (Có)
+    |Hệ thống|
+    :Tiếp nhận theo căn cứ ngoại lệ;
+  else (Không)
+    |Hệ thống|
+    :Ghi rejected, lý do và hướng dẫn;\nkhông sửa quyết định gốc;
+    stop
+  endif
+endif
+|Trưởng kiểm soát / Pháp chế|
+:Phân công người chưa điều tra\nvà chưa duyệt kết luận bị khiếu nại;
+|Hệ thống|
+while (Chưa có người đủ độc lập?) is (Có)
+  :Escalation và giữ hồ sơ chờ;\nkhông tự bỏ điều kiện độc lập;
+  |Trưởng kiểm soát / Pháp chế|
+  :Điều phối người thay thế;
+  |Hệ thống|
+endwhile (Đã có)
+:Chuyển reviewing;
+|Người xử lý khiếu nại|
+:Đọc nguồn, giải trình, căn cứ mới\nvà kiểm quy trình kết luận trước;
+:Ghi giữ nguyên / sửa / hủy\nvà lý do có căn cứ;
+|Hệ thống|
+:Kiểm version; ghi nguyên tử quyết định kế tiếp,\nquyết định hiện hành, decided và audit;
+:Công bố bản phù hợp cho tài xế;
+if (Có thay đổi và đã bàn giao\nkết quả cũ gây tác động?) then (Có)
+  :Tạo tác vụ khắc phục có người nhận;
+  |Đơn vị nhận bàn giao|
+  :Thực hiện khắc phục theo thẩm quyền\nvà xác nhận kết quả;
+  |Hệ thống|
+  :Đối soát và ghi hoàn tất khắc phục;
+endif
+:Giữ toàn bộ lịch sử để kiểm toán;
+stop
+@enduml

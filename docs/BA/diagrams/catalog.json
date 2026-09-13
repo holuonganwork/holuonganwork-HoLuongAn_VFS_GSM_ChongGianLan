@@ -1,0 +1,16 @@
+[
+  {"id":"UC-D01","group":"Use Case","title":"Điều tra và phối hợp tài xế","file":"uc-01-investigation"},
+  {"id":"UC-D02","group":"Use Case","title":"Quản trị và cải tiến","file":"uc-02-governance"},
+  {"id":"ACT-D01","group":"Activity","title":"Điều tra và phê duyệt kết luận","file":"act-01-investigation"},
+  {"id":"ACT-D02","group":"Activity","title":"Yêu cầu và giải trình","file":"act-02-explanation"},
+  {"id":"ACT-D03","group":"Activity","title":"Khiếu nại và khắc phục","file":"act-03-appeal"},
+  {"id":"SEQ-D01","group":"Sequence","title":"Dữ liệu, dấu hiệu và hồ sơ","file":"seq-01-detection"},
+  {"id":"SEQ-D02","group":"Sequence","title":"Phát hành và nhận phản hồi","file":"seq-02-explanation"},
+  {"id":"SEQ-D03","group":"Sequence","title":"Đề xuất và duyệt độc lập","file":"seq-03-decision"},
+  {"id":"SEQ-D04","group":"Sequence","title":"Khiếu nại và quyết định kế tiếp","file":"seq-04-appeal"},
+  {"id":"CLS-D01","group":"Domain Class","title":"Sự việc và bằng chứng","file":"class-01-evidence"},
+  {"id":"CLS-D02","group":"Domain Class","title":"Giải trình và quyết định","file":"class-02-workflow"},
+  {"id":"DFD-D00","group":"DFD","title":"Luồng dữ liệu ngữ cảnh","file":"dfd-00-context"},
+  {"id":"DFD-D01","group":"DFD","title":"Luồng dữ liệu mức 1","file":"dfd-01-system"},
+  {"id":"DFD-D02","group":"DFD","title":"Tìm kiếm và kiểm chứng mức 2","file":"dfd-02-evidence-search"}
+]

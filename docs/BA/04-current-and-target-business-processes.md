@@ -1,5 +1,7 @@
 # Quy trình hiện tại và quy trình đích
 
+Sơ đồ bổ sung: [Activity có swimlane](20-uml-activity-diagrams.md) và [Sequence](21-uml-sequence-diagrams.md). Sơ đồ trạng thái trong tài liệu này là căn cứ đối chiếu các luồng chi tiết.
+
 ## As-is: tách quan sát khỏi giả thuyết
 
 Luồng quan sát được trong [prototype](../../README.md): nguồn tổng hợp → quy tắc → tín hiệu → cảnh báo → chính sách định tuyến → hồ sơ kiểm soát nội bộ → kết luận. Điểm rủi ro đến từ trọng số quy tắc; probability/confidence chưa có ở adapter hiện tại. Giải trình lịch sử còn đọc được nhưng không có luồng ghi giải trình mới. Đây là hiện trạng phần mềm, không phải mô tả cách doanh nghiệp đang làm việc.

@@ -1,0 +1,69 @@
+@startuml
+!include theme.puml
+top to bottom direction
+title DFD-D01 — DFD mức 1: các chức năng và kho dữ liệu
+skinparam defaultFontSize 13
+rectangle "E3\nChủ nguồn / Finance" as E3 #F1F5F9
+rectangle "E2\nKiểm soát / người duyệt /\nxử lý khiếu nại" as E2 #F1F5F9
+rectangle "E1\nTài xế / hỗ trợ" as E1 #F1F5F9
+rectangle "E5\nKênh thông báo" as E5 #F1F5F9
+rectangle "E7\nĐơn vị nhận bàn giao" as E7 #F1F5F9
+rectangle "E4\nDanh tính" as E4 #F1F5F9
+rectangle "E6\nRisk / QA / quản trị / pháp chế" as E6 #F1F5F9
+usecase "1.0\nTiếp nhận, kiểm chất lượng\nvà phát hiện dấu hiệu" as P1
+usecase "2.0\nTìm kiếm, điều tra\nvà lập căn cứ" as P2
+usecase "3.0\nTrao đổi, quyết định\nvà khiếu nại" as P3
+usecase "4.0\nQuản trị quyền, dữ liệu\nvà chất lượng" as P4
+database "D1\nNguồn / bản chụp / chất lượng" as D1
+database "D2\nDấu hiệu / hồ sơ / bằng chứng" as D2
+database "D3\nTrao đổi / quyết định / khiếu nại" as D3
+database "D4\nQuyền / chính sách / quy tắc / nhãn" as D4
+database "D5\nAudit / biên bản vòng đời" as D5
+E3 --> P1 : F05 — Nguồn,\nđính chính, xác minh
+P1 --> E3 : F06 — Đối soát,\nyêu cầu xác minh
+E2 --> P2 : F03a — Truy vấn,\nđánh giá, đề xuất
+P2 --> E2 : F04a — Hàng đợi,\nkết quả, căn cứ
+E2 --> P3 : F03b — Phê duyệt,\nxử lý khiếu nại
+P3 --> E2 : F04b — Trao đổi,\ntrạng thái, kết quả
+E1 --> P3 : F01 — Báo vấn đề,\ngiải trình, khiếu nại
+P3 --> E1 : F02 — Yêu cầu,\nbiên nhận, kết quả
+P3 --> E5 : F09 — Nội dung, đích giao
+E5 --> P3 : F10 — Trạng thái gửi/giao
+P3 --> E7 : F13 — Bàn giao, khắc phục
+E7 --> P3 : F14 — Biên nhận, kết quả
+P4 --> E4 : F07 — Yêu cầu xác thực
+E4 --> P4 : F08 — Danh tính / vai trò
+E6 --> P4 : F11 — Quyền / chính sách / nhãn
+P4 --> E6 : F12 — Báo cáo / audit / kết quả
+P1 --> D1 : Bản nguồn, hash, chất lượng
+D1 --> P1 : Bản đã nhận / tập nguồn
+D4 --> P1 : Rule version đã duyệt
+P1 --> D2 : Dấu hiệu / alert / hồ sơ liên kết
+D1 --> P2 : Nguồn theo phiên bản
+D2 --> P2 : Hồ sơ và căn cứ hiện có
+D3 --> P2 : Giải trình / quyết định / trạng thái
+P2 --> D2 : Owner / bằng chứng / đề xuất
+P2 --> P1 : Yêu cầu bổ sung / xác minh nguồn
+P2 --> P3 : Gói căn cứ / đề xuất / câu hỏi
+P3 --> D2 : Hồ sơ thủ công / trạng thái / resolution
+P3 --> D3 : Bản phát hành / phản hồi / quyết định / appeal
+D3 --> P3 : Trao đổi / kết luận hiện hành
+P2 --> P4 : Ngữ cảnh người dùng / phạm vi yêu cầu
+P4 --> P2 : Phạm vi được phép / chính sách truy cập
+P3 --> P4 : Ngữ cảnh actor / yêu cầu hành động
+P4 --> P3 : Quyền / chính sách / phân tách trách nhiệm
+P4 --> D4 : Chính sách, version quy tắc, nhãn thẩm định
+D4 --> P4 : Quyền và cấu hình có hiệu lực
+D2 --> P4 : Hồ sơ / chất lượng / lượng tồn
+D3 --> P4 : SLA / phản hồi / kết quả khiếu nại
+P1 --> D5 : Audit tiếp nhận / phát hiện
+P2 --> D5 : Audit tìm / đọc / ghi / xuất căn cứ
+P3 --> D5 : Audit trao đổi / duyệt / khiếu nại
+P4 --> D5 : Audit quản trị / biên bản giữ-xóa
+D5 --> P4 : Nhật ký để kiểm toán
+note bottom of P4
+  Chi tiết thực thi giữ/xóa bản thô, chỉ mục, tệp và backup
+  theo FR-20 được trình bày trong tài liệu 23.
+  D1–D5 là kho logic; không quy định số database vật lý.
+end note
+@enduml

@@ -1,0 +1,41 @@
+@startuml
+!include theme.puml
+left to right direction
+title UC-D02 — Use Case: quản trị và cải tiến
+actor "Risk Analyst /\nQA nghiệp vụ" as Risk
+actor "Trưởng kiểm soát /\nngười duyệt quy tắc" as Lead
+actor "Finance" as Finance
+actor "Người có quyền\nxuất hồ sơ" as Exporter
+actor "Pháp chế /\nđầu mối dữ liệu" as Privacy
+actor "Quản trị kỹ thuật" as Admin
+actor "Kiểm toán" as Auditor
+actor "Hệ thống danh tính" as IdP
+rectangle "Hệ thống điều tra gian lận — quản trị" {
+  usecase "UC-08\nCải tiến và báo cáo" as U8
+  usecase "UC-09\nQuản trị và sử dụng\ndữ liệu theo quyền" as U9
+  usecase "Kiểm tra quyền và\nphạm vi dữ liệu" as Access
+  usecase "Ghi nhật ký\nhành động" as Audit
+}
+Risk -- U8
+Lead -- U8
+Finance -- U8 : xác nhận giá trị
+Exporter -- U9
+Privacy -- U9
+Admin -- U9 : thực thi chính sách
+Auditor -- U9 : chỉ đọc theo nhiệm vụ
+IdP -- Access : danh tính và vai trò
+U8 ..> Access : <<include>>
+U8 ..> Audit : <<include>>
+U9 ..> Access : <<include>>
+U9 ..> Audit : <<include>>
+note bottom of U8
+  Nhóm UC-08 bao gồm báo cáo, nhãn và quy tắc.
+  Mỗi tác vụ thực hiện kiểm quyền và ghi audit;
+  không bắt buộc làm cả ba việc trong một lần dùng.
+end note
+note bottom of U9
+  Phân quyền, export, audit và vòng đời dữ liệu.
+  Vai trò quản trị không mặc nhiên được đọc hồ sơ.
+  Người tạo quy tắc không tự phê duyệt bản của mình.
+end note
+@enduml

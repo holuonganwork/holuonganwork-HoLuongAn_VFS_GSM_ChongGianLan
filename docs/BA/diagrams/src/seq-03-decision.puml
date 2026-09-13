@@ -1,0 +1,51 @@
+@startuml
+!include theme.puml
+title SEQ-D03 — Sequence: đề xuất và duyệt độc lập
+autonumber
+actor "Kiểm soát viên" as Reviewer
+participant "Hồ sơ và\nkiểm tra quyền" as Case
+database "Căn cứ / giải trình\ntheo phiên bản" as Evidence
+actor "Người duyệt độc lập" as Approver
+database "Quyết định + audit" as Store
+participant "Công bố /\nbàn giao" as Publish
+Reviewer -> Case : Đề xuất resolution, reason, policy và case version
+Case -> Evidence : Đọc căn cứ ủng hộ/phản bác và giải trình
+Evidence --> Case : Source/version, mức xác minh, phần còn thiếu
+Case -> Case : Checklist; RULE-08 nếu confirmed_fraud
+alt Chưa đủ điều kiện
+  Case --> Reviewer : Trả phần thiếu; không chuyển pending_approval
+else Đủ điều kiện
+  Case -> Store : Lưu đề xuất/version + pending_approval + audit
+  Case ->> Approver : Đề nghị xem xét hồ sơ
+  Approver -> Case : Mở bản đề xuất và căn cứ hiện hành
+  Case --> Approver : Đề xuất, giải trình, phản bác và giới hạn
+  Approver -> Case : Duyệt / trả lại + lý do + version đã đọc
+  alt Không độc lập, mất quyền hoặc version đã thay đổi
+    Case --> Approver : Từ chối; tải lại hoặc phân công người khác
+  else Trả lại
+    Case -> Store : investigating + lý do trả lại + audit
+    Case ->> Reviewer : Cần điều tra/bổ sung
+  else Duyệt
+    critical Kiểm version và ghi nguyên tử
+      Case -> Store : Kiểm khóa/version, chưa có quyết định cạnh tranh
+      Store --> Case : Kết quả kiểm tra hiện hành
+      alt Còn hợp lệ
+        Case -> Store : Decision version + resolved + audit
+        Store --> Case : Commit thành công
+      else Có thay đổi/cạnh tranh
+        Store --> Case : Xung đột; không tạo thêm quyết định
+      end
+    end
+    opt Chỉ sau commit thành công
+      Case -> Publish : Bản công bố được phép + decision version
+      Publish -> Publish : Gửi, theo dõi giao; bàn giao có người nhận
+      Publish --> Case : Trạng thái công bố/bàn giao
+    end
+  end
+end
+note over Case, Publish
+  Tài xế có cơ hội giải trình trước xác nhận gian lận.
+  Không gửi thông báo thành công trước khi quyết định được lưu.
+  Không tự đổi trạng thái tài xế, trừ tiền hoặc thi hành kỷ luật.
+end note
+@enduml

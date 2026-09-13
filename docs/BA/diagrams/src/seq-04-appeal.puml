@@ -1,0 +1,49 @@
+@startuml
+!include theme.puml
+title SEQ-D04 — Sequence: khiếu nại, phiên bản và khắc phục
+autonumber
+actor "Tài xế" as Driver
+participant "Khiếu nại /\nphân quyền" as Appeal
+participant "Điều phối\nđộc lập" as Assignment
+actor "Người xử lý\nkhiếu nại" as Reviewer
+database "Hồ sơ + quyết định\n+ audit" as Store
+actor "Đơn vị nhận\nbàn giao" as Ops
+Driver -> Appeal : Quyết định bị khiếu nại, lý do, tài liệu, key
+Appeal -> Appeal : Kiểm ownership, biên nhận trùng, hạn và vòng
+alt Ngoài hạn/vòng thông thường
+  Appeal -> Assignment : Yêu cầu xét ngoại lệ + căn cứ
+  Assignment --> Appeal : Chấp nhận hoặc từ chối có lý do
+end
+alt Không được tiếp nhận hợp lệ
+  Appeal -> Store : Ghi rejected và lý do; giữ quyết định gốc
+  Appeal --> Driver : Kết quả và hướng dẫn
+else Được tiếp nhận
+  Appeal -> Store : Lưu submitted + receipt + audit
+  Appeal --> Driver : Biên nhận và trạng thái
+  Appeal -> Assignment : Cần người khác điều tra viên/người duyệt cũ
+  Assignment --> Appeal : Người đủ điều kiện hoặc chờ escalation
+  opt Đã có người độc lập
+    Appeal -> Reviewer : Hồ sơ, quyết định gốc, căn cứ mới
+    Reviewer -> Appeal : Yêu cầu truy nguyên / bổ sung nếu cần
+    Appeal -> Store : Đọc các phiên bản được phép
+    Store --> Appeal : Dữ kiện và lịch sử theo phiên bản
+    Appeal --> Reviewer : Hồ sơ được phép xem và căn cứ liên quan
+    Reviewer -> Appeal : Giữ / sửa / hủy + căn cứ + version đã đọc
+    critical Kiểm quyền/version rồi ghi nguyên tử
+      Appeal -> Store : Thêm decision version; cập nhật bản hiệu lực;
+      Appeal -> Store : decided + audit, không ghi đè bản gốc
+    end
+    Appeal --> Driver : Kết quả và căn cứ được công bố
+    opt Đổi kết luận đã bàn giao gây tác động
+      Appeal -> Ops : Tác vụ khắc phục + quyết định mới
+      Ops --> Appeal : Xác nhận xử lý theo thẩm quyền
+      Appeal -> Store : Kết quả khắc phục và audit
+    end
+  end
+end
+note over Appeal, Store
+  Case vẫn resolved trong khi appeal đang xử lý.
+  Xung đột version: tải lại, chưa công bố kết quả mới.
+  Không có người độc lập: giữ chờ, không tự quyết định.
+end note
+@enduml

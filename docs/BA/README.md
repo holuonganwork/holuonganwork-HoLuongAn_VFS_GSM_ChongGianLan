@@ -39,6 +39,14 @@ MVP tập trung vào bốn nhóm dấu hiệu đã có dữ liệu mẫu trong r
 | [15. MVP và lộ trình](15-mvp-roadmap-and-business-case.md) | Backlog theo đợt, cổng quyết định, năng lực và mô hình lợi ích |
 | [16. Trải nghiệm và mẫu hồ sơ](16-experience-search-and-evidence-templates.md) | Màn hình khái niệm, đặc tả tìm kiếm, mẫu bằng chứng/giải trình |
 | [17. Khoảng cách với prototype](17-prototype-gap-and-transition.md) | Phần tái sử dụng, phần còn thiếu, bàn giao kiến trúc |
+| [18. Danh mục sơ đồ](18-diagram-catalog.md) | 14 sơ đồ bổ sung, bản SVG, nguồn PlantUML và truy vết |
+| [19. UML Use Case](19-uml-use-case-diagrams.md) | Tác nhân và chức năng điều tra, phối hợp, quản trị |
+| [20. UML Activity](20-uml-activity-diagrams.md) | Swimlane điều tra, giải trình và khiếu nại |
+| [21. UML Sequence](21-uml-sequence-diagrams.md) | Trình tự phát hiện, giải trình, duyệt và xem xét lại |
+| [22. UML Domain Class](22-uml-domain-class-diagrams.md) | Đối tượng nghiệp vụ, thuộc tính và cardinality |
+| [23. DFD](23-data-flow-diagrams.md) | Ngữ cảnh, mức 1, mức 2 và cân bằng luồng dữ liệu |
+
+Xem hình tại [trang tập hợp sơ đồ](diagrams/index.html); mỗi sơ đồ có SVG để phóng to và mã nguồn để chỉnh sửa. Phụ lục sơ đồ giữ nguyên mã yêu cầu của baseline BA 1.0.
 
 Bản bảng tính để sử dụng trong workshop và nghiệm thu:
 

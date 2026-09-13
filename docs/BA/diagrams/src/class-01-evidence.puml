@@ -1,0 +1,89 @@
+@startuml
+!include theme.puml
+top to bottom direction
+title CLS-D01 — Domain Class: sự việc và bằng chứng
+hide empty methods
+class Driver {
+  driverId
+  externalDriverId
+}
+class Trip {
+  tripId
+  eventPeriod
+  status
+}
+class GPSEvent {
+  eventAt / receivedAt
+  coordinates / accuracy
+}
+class Device {
+  deviceToken
+}
+class DeviceAssociation {
+  firstSeen / lastSeen
+  allocationReference
+}
+class PromotionPolicyVersion {
+  policyId / version
+  effectivePeriod
+  eligibility
+}
+class RuleVersion {
+  ruleId / version
+  parameters
+  approvedBy / effectiveAt
+}
+class SourceSnapshot {
+  sourceSystem / sourceId / version
+  acquiredAt / collectedBy
+  contentHash / quality
+}
+class Signal {
+  signalId / type
+  measuredValues / threshold
+  sourceReferences
+}
+class Alert {
+  alertId / incidentKey
+  detectionFingerprint
+  riskScore / assessment
+}
+class FraudCase {
+  caseId / subjectDriverId
+  status / resolution
+  owner / version
+}
+class EvidenceItem {
+  evidenceId / version
+  statement / method
+  relevance / verification
+  accessClass
+}
+Driver "1" -- "0..*" Trip : thực hiện
+Trip "1" -- "0..*" GPSEvent : ghi nhận
+Driver "1" -- "0..*" DeviceAssociation : được quan sát
+Device "1" -- "0..*" DeviceAssociation : liên kết lịch sử
+Trip "0..*" -- "0..1" PromotionPolicyVersion : chính sách gắn trên chuyến
+Driver "1" -- "0..*" FraudCase : chủ thể
+RuleVersion "1" -- "0..*" Signal : tạo theo phiên bản
+Signal "0..*" -- "1..*" SourceSnapshot : truy nguyên
+Alert "1" -- "1..*" Signal : gom dấu hiệu
+FraudCase "0..1" -- "0..*" Alert : liên kết cùng sự việc
+FraudCase "1" -- "0..*" EvidenceItem : hồ sơ căn cứ
+EvidenceItem "0..*" -- "1..*" SourceSnapshot : viện dẫn
+SourceSnapshot ..> Trip : có thể chụp
+SourceSnapshot ..> GPSEvent : có thể chụp
+SourceSnapshot ..> DeviceAssociation : có thể chụp
+SourceSnapshot ..> PromotionPolicyVersion : có thể chụp
+note bottom of FraudCase
+  Một hồ sơ / tài xế / sự việc.
+  Hồ sơ thủ công có thể chưa có alert.
+  Liên kết nhiều snapshot alert qua batch là thiết kế đích,
+  khác ràng buộc 1 alert / 1 case của prototype.
+end note
+note bottom of EvidenceItem
+  relevance: support / refute / unclear.
+  verification: unverified / verified / disputed / integrity_failed.
+  Hash kiểm nội dung đã thu; không tự chứng minh sự thật.
+end note
+@enduml

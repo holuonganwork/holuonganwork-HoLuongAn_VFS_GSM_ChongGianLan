@@ -29,3 +29,4 @@ Không lưu các lượt hỏi đáp thông thường.
 | 8 | 13/09/2026 15:45:49 (UTC+7) — ghi bù; giờ thực hiện chưa xác định | Ghi bù frontend FraudLens và CI; build, 5 test API và 9 E2E đạt. | [Chi tiết frontend](logs/2026-09-13-frontend-backfill.md) |
 | 9 | 13/09/2026 15:45:49 (UTC+7) — ghi bù; giờ thực hiện chưa xác định | Ghi nhận 3 tài nguyên giao diện backend còn dở dang, chưa tích hợp. | [Chi tiết khởi tạo web](logs/2026-09-13-backend-web-scaffold-backfill.md) |
 | 10 | 13/09/2026 15:45:49 (UTC+7) — ghi nhận kết quả đối chiếu | Đối chiếu đủ 95 file công việc; chia 6 commit cho 103 file, bổ sung tracking và kết quả kiểm chứng. | [Chi tiết đối chiếu và commit](logs/2026-09-13-worklog-audit-and-commits.md) |
+| 11 | 13/09/2026 21:38:38 (UTC+7) — ghi bổ sung kết quả | Bổ sung 14 sơ đồ UML/DFD, 6 tài liệu, trang xem và công cụ dựng; kiểm chứng và commit cùng nhật ký. | [Chi tiết sơ đồ BA](logs/2026-09-13-ba-diagrams.md) |

@@ -1,5 +1,7 @@
 # Yêu cầu dữ liệu và thuật ngữ
 
+Sơ đồ bổ sung: [Domain Class](22-uml-domain-class-diagrams.md) biểu diễn đối tượng và ràng buộc; [DFD](23-data-flow-diagrams.md) biểu diễn nguồn, kho logic và trao đổi dữ liệu.
+
 ## Mô hình khái niệm đích
 
 ```mermaid

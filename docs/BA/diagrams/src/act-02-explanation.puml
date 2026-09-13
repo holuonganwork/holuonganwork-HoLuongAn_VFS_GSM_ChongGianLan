@@ -1,0 +1,40 @@
+@startuml
+!include theme.puml
+title ACT-D02 — Activity: yêu cầu và giải trình
+|Kiểm soát viên|
+start
+:Soạn câu hỏi, căn cứ được công bố\nvà chính sách hạn; xem trước bản đã che;
+|Hệ thống|
+:Lưu request version và phát hành\nwaiting_driver; chưa tính hạn khi chưa giao;
+repeat
+  :Gửi qua kênh được chấp nhận\nvà chờ bằng chứng giao;
+  if (Giao thất bại hoặc chưa xác nhận?) then (Có)
+    |Hỗ trợ tài xế|
+    :Xác minh kênh/danh tính; hỗ trợ truy cập\nkể cả khi quyền nhận chuyến bị hạn chế;
+    |Hệ thống|
+    :Ghi block_reason và escalation;\nkhông coi đã hết hạn;
+  endif
+repeat while (Chưa giao hợp lệ và yêu cầu\nvẫn còn cần làm rõ?) is (Thử/hỗ trợ tiếp) not (Kết thúc chờ giao)
+if (Yêu cầu đã được hủy có lý do?) then (Có)
+  :Giữ lịch sử hủy và trả về điều tra;\nkhông thay thế cơ hội giải trình khi xác nhận;
+  stop
+endif
+:Ghi delivered_at và due_at\ntheo phiên bản SLA; không reset khi gửi lặp;
+|Tài xế|
+:Xem sự việc, câu hỏi và hạn;\nlưu nháp, yêu cầu hỗ trợ/gia hạn nếu cần;
+|Hệ thống|
+:Chờ phản hồi hoặc mốc hạn đã điều chỉnh;\ngia hạn cần người duyệt và audit;
+if (Có phản hồi?) then (Có)
+  |Tài xế|
+  :Gửi nội dung và tệp sẵn có\nvới mã chống gửi lặp;
+  |Hệ thống|
+  :Kiểm identity/ownership; lưu nội dung,\nbiên nhận và audit trước xác nhận thành công;
+  :Quét/cách ly tệp; không chặn nội dung chữ\nvì tệp lỗi; thông báo tệp chưa sử dụng được;
+  :Ghi response_received;\ngiữ bản đã gửi và các phiên bản bổ sung;
+else (Hết hạn hợp lệ)
+  :Ghi chưa nhận phản hồi;\nchuyển investigating, không ghi nhận lỗi;
+endif
+|Kiểm soát viên|
+:Đánh giá dữ liệu hiện có và phản bác;\nkhông viện dẫn tệp trọng yếu chưa xác minh;
+stop
+@enduml

@@ -4,6 +4,8 @@ Baseline BA 1.0. Bảng liên kết mọi FR với mục tiêu nghiệp vụ, us
 
 Bảng FR có [bản CSV](requirements-traceability.csv) dùng cho công cụ bảng tính; tài liệu này là bản chuẩn cho cả FR và NFR.
 
+Liên kết từ sơ đồ UML/DFD đến UC, FR, DR, RULE và UAT nằm ở [danh mục sơ đồ 18](18-diagram-catalog.md). Phụ lục sơ đồ không đổi các mã và liên kết yêu cầu trong bảng dưới đây.
+
 ## Truy vết yêu cầu chức năng
 
 | FR | BR | UC | US | Quy tắc | Dữ liệu | UAT |

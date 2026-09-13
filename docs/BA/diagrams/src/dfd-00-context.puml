@@ -1,0 +1,32 @@
+@startuml
+!include theme.puml
+left to right direction
+title DFD-D00 — Sơ đồ ngữ cảnh và trao đổi với bên ngoài
+rectangle "E1\nTài xế / hỗ trợ có ủy quyền" as E1 #F1F5F9
+rectangle "E2\nKiểm soát / người duyệt /\nngười xử lý khiếu nại" as E2 #F1F5F9
+rectangle "E3\nChủ nguồn nghiệp vụ\nbao gồm Finance khi xác minh" as E3 #F1F5F9
+usecase "0\nHỆ THỐNG ĐIỀU TRA\nGIAN LẬN TÀI XẾ" as P0 #DBEAFE
+rectangle "E4\nHệ thống danh tính" as E4 #F1F5F9
+rectangle "E5\nKênh thông báo" as E5 #F1F5F9
+rectangle "E6\nRisk / QA / quản trị /\npháp chế theo nhiệm vụ" as E6 #F1F5F9
+rectangle "E7\nĐơn vị nhận bàn giao" as E7 #F1F5F9
+E1 --> P0 : F01 — Báo vấn đề,\ngiải trình, khiếu nại
+P0 --> E1 : F02 — Yêu cầu,\nbiên nhận, kết quả
+E2 --> P0 : F03 — Truy vấn, đánh giá,\nđề xuất, phê duyệt
+P0 --> E2 : F04 — Hồ sơ, nguồn,\ntrao đổi, trạng thái
+E3 --> P0 : F05 — Dữ liệu,\nđính chính, xác minh
+P0 --> E3 : F06 — Đối soát,\nyêu cầu xác minh
+P0 --> E4 : F07 — Yêu cầu xác thực /\nđối chiếu danh tính
+E4 --> P0 : F08 — Danh tính,\nvai trò, trạng thái xác thực
+P0 --> E5 : F09 — Nội dung tối thiểu,\nđích giao
+E5 --> P0 : F10 — Trạng thái gửi/giao
+E6 --> P0 : F11 — Chính sách, quyền,\nquy tắc, nhãn được duyệt
+P0 --> E6 : F12 — Báo cáo, audit,\nkết quả quản trị
+P0 --> E7 : F13 — Hồ sơ bàn giao,\ntác vụ khắc phục
+E7 --> P0 : F14 — Biên nhận,\nkết quả xử lý
+legend bottom
+  DFD: mũi tên là dữ liệu trao đổi, không phải thứ tự thực hiện.
+  E = thực thể ngoài; hình bầu dục = tiến trình xử lý.
+  P0 bao gồm logic nội bộ; sơ đồ ngữ cảnh không vẽ kho dữ liệu.
+endlegend
+@enduml

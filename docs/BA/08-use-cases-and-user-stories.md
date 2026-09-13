@@ -1,5 +1,7 @@
 # Use case và user story
 
+Xem [UML Use Case Diagram](19-uml-use-case-diagrams.md) để đối chiếu actor, ranh giới và các nhóm chức năng của danh mục dưới đây.
+
 ## Danh mục use case
 
 | Mã | Tác nhân và mục tiêu | Kích hoạt / tiền điều kiện | Hậu điều kiện thành công |

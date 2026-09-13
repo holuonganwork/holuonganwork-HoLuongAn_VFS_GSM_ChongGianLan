@@ -1,0 +1,51 @@
+@startuml
+!include theme.puml
+title SEQ-D02 — Sequence: phát hành và nhận giải trình
+autonumber
+actor "Kiểm soát viên" as Reviewer
+participant "Dịch vụ hồ sơ\nvà phân quyền" as Case
+database "Trao đổi + audit" as Store
+participant "Kênh thông báo" as Notify
+actor "Tài xế / hỗ trợ\ncó ủy quyền" as Driver
+participant "Kho tệp /\nkiểm tra tệp" as Files
+Reviewer -> Case : Request version, câu hỏi, bản công bố, SLA
+Case -> Case : Kiểm quyền, version và nội dung đã che
+Case -> Store : Lưu bản phát hành và yêu cầu gửi
+Case -> Notify : Thông báo tối thiểu + liên kết truy cập
+Notify --> Case : Đã nhận yêu cầu gửi
+note over Case, Notify : Xác nhận gửi chưa phải delivered_at.
+alt Chưa có bằng chứng giao / gửi lỗi
+  Case -> Store : Ghi lỗi giao, block_reason, tác vụ hỗ trợ
+  note over Case, Driver : Chưa tính due_at; hỗ trợ xác minh kênh và quyền truy cập.
+else Webhook giao hợp lệ hoặc tài xế đã xác thực mở yêu cầu
+  Notify ->> Case : Bằng chứng giao của kênh được chấp nhận
+  Case -> Store : Ghi delivered_at và due_at theo SLA
+end
+Driver -> Case : Mở hồ sơ/request của mình
+Case -> Case : Kiểm ownership và quyền xem bản công bố
+Case --> Driver : Nội dung, hạn hiện hành, hỗ trợ và phiên bản
+opt Có tài liệu đính kèm
+  Driver -> Files : Upload với quyền gắn vào request này
+  Files -> Files : Kiểm MIME, kích thước, hash; cách ly/quét
+  Files --> Driver : Mã tệp + trạng thái sạch/chờ/lỗi
+end
+Driver -> Case : Gửi nội dung, mã tệp, idempotency key
+Case -> Case : Kiểm lại identity, ownership và version
+alt Đã nhận cùng key và cùng nội dung
+  Case -> Store : Đọc biên nhận đã lưu
+  Case --> Driver : Trả lại cùng biên nhận
+else Nội dung mới hợp lệ
+  critical Lưu bền vững một lần
+    Case -> Store : Response version + receipt + audit
+    Case -> Store : Cập nhật trạng thái theo case version
+  end
+  Case --> Driver : Biên nhận và trạng thái tệp
+  Case ->> Reviewer : Có phản hồi/bổ sung cần đánh giá
+end
+note over Case, Store
+  Cùng key nhưng khác nội dung: từ chối xung đột.
+  Pending approval + thông tin mới: về investigating.
+  Đã resolved: tiếp nhận qua khiếu nại/xem xét lại.
+  Tệp chờ quét không là căn cứ đã xác minh.
+end note
+@enduml

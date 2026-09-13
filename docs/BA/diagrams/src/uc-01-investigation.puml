@@ -1,0 +1,44 @@
+@startuml
+!include theme.puml
+left to right direction
+title UC-D01 — Use Case: điều tra và phối hợp tài xế
+actor "Tài xế" as Driver
+actor "Kiểm soát viên" as Reviewer
+actor "Nguồn dữ liệu\nđược cấp quyền" as Source
+actor "Người duyệt\nđộc lập" as Approver
+actor "Người xử lý\nkhiếu nại độc lập" as AppealReviewer
+actor "Hỗ trợ tài xế\ncó ủy quyền" as Support
+rectangle "Hệ thống điều tra gian lận — nghiệp vụ cốt lõi" {
+  usecase "UC-01\nTiếp nhận dữ liệu\nvà tạo nghi vấn" as U1
+  usecase "UC-02\nNhận việc và\ntìm hồ sơ" as U2
+  usecase "UC-03\nDựng và kiểm chứng\nbằng chứng" as U3
+  usecase "UC-04\nYêu cầu tài xế\nlàm rõ" as U4
+  usecase "UC-05\nGiải trình và\nbổ sung tài liệu" as U5
+  usecase "UC-06\nĐề xuất, duyệt\nvà công bố kết luận" as U6
+  usecase "UC-07\nKhiếu nại và\nxem xét lại" as U7
+  usecase "UC-10\nBáo vấn đề của\nchuyến mình" as U10
+}
+Source -- U1
+Reviewer -- U2
+Reviewer -- U3
+Reviewer -- U4
+Reviewer -- U6
+Driver -- U4 : nhận yêu cầu
+Driver -- U5
+Driver -- U6 : nhận kết quả
+Driver -- U7
+Driver -- U10
+Approver -- U6
+AppealReviewer -- U7
+Support -- U5 : gửi hộ đã xác minh
+note bottom of U6
+  Người đề xuất không tự duyệt.
+  Xác nhận gian lận cần RULE-08.
+  Kết luận không tự khóa tài khoản/trừ tiền.
+end note
+note bottom of U7
+  Khiếu nại là một tương tác sau kết luận,
+  không phải bước bắt buộc của mọi UC-06.
+  Giữ lịch sử quyết định, ghi phiên bản mới.
+end note
+@enduml

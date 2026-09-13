@@ -1,0 +1,89 @@
+@startuml
+!include theme.puml
+top to bottom direction
+title CLS-D02 — Domain Class: giải trình và quyết định
+hide empty methods
+class FraudCase {
+  caseId / status / resolution
+  subjectDriverId / version
+}
+class CaseAssignment {
+  actorId / role
+  assignedAt / endedAt
+}
+class ExplanationRequest {
+  requestId / version
+  publicFacts / questions
+  deliveredAt / dueAt / slaVersion
+}
+class DeliveryAttempt {
+  messageId / recipient / channel
+  sentAt / deliveredAt / readAt
+  deliveryProof / result
+}
+class DriverResponse {
+  responseId / version / requestVersion
+  actorId / actingOnBehalfOf
+  submittedAt / receipt / text
+}
+class Attachment {
+  fileId / contentHash
+  detectedMime / scanStatus
+  accessClass / originalReference
+}
+class ReviewProposal {
+  proposalId / caseVersion
+  proposerId / proposedResolution
+  rationale / evidenceVersions
+}
+class DecisionVersion {
+  decisionId / version / effective
+  resolution / policyVersion
+  proposerId / approverId / rationale
+  evidenceVersions / responseVersions
+}
+class Appeal {
+  appealId / status / reason
+  submittedAt / reviewerId
+  outcome / exceptionBasis
+}
+class RemedyTask {
+  taskId / recipient / status
+  acknowledgedAt / outcome
+}
+class AuditEvent {
+  actorId / action / time
+  objectId / objectVersion
+  reason / result
+}
+FraudCase "1" -- "0..*" CaseAssignment : phân công theo thời gian
+FraudCase "1" -- "0..*" ExplanationRequest : yêu cầu có phiên bản
+ExplanationRequest "1" -- "0..*" DriverResponse : nhận phản hồi
+DriverResponse "1" -- "0..*" Attachment : bổ sung tài liệu
+ExplanationRequest "0..1" -- "0..*" DeliveryAttempt : phát hành yêu cầu
+DecisionVersion "0..1" -- "0..*" DeliveryAttempt : công bố kết quả
+FraudCase "1" -- "0..*" ReviewProposal : các lần đề xuất
+ReviewProposal "0..1" -- "0..1" DecisionVersion : phê duyệt lần đầu
+FraudCase "1" -- "0..*" DecisionVersion : lịch sử kết luận
+DecisionVersion "1" -- "0..*" Appeal : quyết định bị khiếu nại
+Appeal "0..1" -- "0..1" DecisionVersion : quyết định kết quả mới
+Appeal "1" -- "0..*" RemedyTask : khắc phục khi cần
+FraudCase "1" -- "0..*" AuditEvent : lịch sử trong phạm vi hồ sơ
+note bottom of DecisionVersion
+  Khi case đã resolved: đúng một version hiệu lực.
+  Người đề xuất khác người duyệt trên cùng hồ sơ.
+  Khiếu nại giữ/sửa/hủy tạo version mới.
+  Hủy không biến mặc định thành not_fraud:
+  phải ghi kết luận hiện hành theo căn cứ.
+end note
+note bottom of Appeal
+  Reviewer khác người điều tra và người duyệt quyết định cũ.
+  Bản đang xử lý chưa có resulting decision.
+  Một vòng thông thường; ngoại lệ có căn cứ và người duyệt.
+end note
+note bottom of DeliveryAttempt
+  Trong lát cắt này, một lượt giao tham chiếu
+  request hoặc decision, không đồng thời cả hai.
+  Không gán sentAt thành deliveredAt.
+end note
+@enduml

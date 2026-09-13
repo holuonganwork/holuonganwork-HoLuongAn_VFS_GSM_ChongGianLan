@@ -1,0 +1,44 @@
+@startuml
+!include theme.puml
+left to right direction
+title DFD-D02 — Phân rã tiến trình 2.0: tìm và kiểm chứng bằng chứng
+rectangle "E2\nKiểm soát viên" as E2 #F1F5F9
+rectangle "4.0\nQuản trị quyền" as P4 #F1F5F9
+rectangle "1.0\nTiếp nhận / xác minh nguồn" as P1 #F1F5F9
+rectangle "3.0\nTrao đổi và quyết định" as P3 #F1F5F9
+usecase "2.1\nKiểm phạm vi và\nchuẩn hóa truy vấn" as P21
+usecase "2.2\nTìm nguồn, liên kết\nvà tái dựng timeline" as P22
+usecase "2.3\nKiểm chứng và đánh giá\nủng hộ / phản bác" as P23
+usecase "2.4\nLưu gói căn cứ\nvà lập đề xuất" as P24
+database "D1\nNguồn / snapshot / chất lượng" as D1
+database "D2\nHồ sơ / bằng chứng" as D2
+database "D3\nGiải trình / quyết định" as D3
+database "D5\nAudit" as D5
+E2 --> P21 : F03a — Truy vấn / thao tác hồ sơ
+P21 --> P4 : Ngữ cảnh người dùng / phạm vi yêu cầu
+P4 --> P21 : Phạm vi được phép / chính sách truy cập
+P21 --> P22 : Truy vấn có phạm vi / version
+D1 --> P22 : Nguồn theo phiên bản
+D2 --> P22 : Hồ sơ và căn cứ hiện có
+D3 --> P22 : Giải trình / quyết định / trạng thái
+P22 --> E2 : F04a — Kết quả, nguồn,\nwatermark, hàng đợi
+P22 --> P23 : Tập dữ kiện và lineage
+E2 --> P23 : F03a — Đánh giá / giả thuyết
+P23 --> P1 : Yêu cầu bổ sung / xác minh nguồn
+P23 --> P24 : Phép đo, nguồn, quality,\nủng hộ / phản bác / phần thiếu
+E2 --> P24 : F03a — Đề xuất / câu hỏi / owner
+P24 --> D2 : Owner / bằng chứng / đề xuất
+P24 --> P3 : Gói căn cứ / đề xuất / câu hỏi
+P24 --> E2 : F04a — Gói căn cứ / biên nhận thao tác
+P21 --> D5 : Audit kiểm quyền / tìm
+P22 --> D5 : Audit đọc nguồn
+P23 --> D5 : Audit đánh giá / xác minh
+P24 --> D5 : Audit ghi / xuất căn cứ
+legend bottom
+  1.0, 3.0, 4.0 là tiến trình ngang cấp ngoài phạm vi phân rã 2.0,
+  không phải hệ thống mới bên ngoài sản phẩm.
+  E2, D1, D2, D3, D5 và các luồng biên khớp DFD-D01.
+  Mỗi lần đọc/xuất/ghi đều kiểm lại quyền hiện hành;
+  phạm vi truy vấn ban đầu không thay thế kiểm quyền lúc dùng.
+endlegend
+@enduml
