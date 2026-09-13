@@ -1,9 +1,10 @@
-# Chuẩn bị commit theo danh mục
+# Phân nhóm và hoàn tất commit theo danh mục
 
 - Thời gian ghi nhận: **12/09/2026 17:10:50 (UTC+7)**.
 - Mã tham chiếu nội bộ: `PREP-20260912-COMMITS`.
 - Nhánh làm việc: `main`; commit gốc trước khi phân nhóm: `a74e1f2`.
 - Bản ghi bổ sung cho các chỉnh sửa file thực tế trong bước chuẩn bị commit.
+- Bổ sung kết quả hoàn tất ngày **13/09/2026 02:48:31 (UTC+7)**, dựa trên lịch sử Git.
 
 ## Mục tiêu công việc
 
@@ -34,7 +35,25 @@ lịch sử, review và bảo trì. Giữ cấu trúc thư mục hiện có.
 | Hook Codex | 5 | Hook, cấu hình, tài liệu và kiểm thử ghi nhật ký |
 | Nhật ký | 5 | Worklog tổng quan và bốn file log chi tiết |
 
-Hash và thứ tự commit được tra cứu trực tiếp bằng `git log --oneline`.
+## Kết quả commit đã đối chiếu bổ sung
+
+Đã tạo chín commit trên `main` trong khoảng **12/09/2026 17:12:47–17:12:55 (UTC+7)**.
+Thời gian bên dưới lấy từ metadata commit; không dùng làm thời điểm viết code.
+
+| Nhóm | Commit | Thời gian commit ngày 12/09/2026 (UTC+7) | Số file |
+| --- | --- | --- | --- |
+| Môi trường | `d8158bc` | 17:12:47 | 11 |
+| Database | `21f0e00` | 17:12:48 | 14 |
+| Phát hiện gian lận | `9c1cb0e` | 17:12:49 | 10 |
+| API | `0a1789b` | 17:12:51 | 8 |
+| Dữ liệu mẫu | `7fe8275` | 17:12:52 | 2 |
+| Kiểm thử/CI | `b484dc3` | 17:12:53 | 9 |
+| Tài liệu | `e67005e` | 17:12:53 | 7 |
+| Hook Codex | `6c705bc` | 17:12:54 | 5 |
+| Nhật ký | `d144d90` | 17:12:55 | 5 |
+
+Tổng cộng 71 file thuộc đợt commit này. Các thay đổi kiến trúc đang chưa commit tại
+lúc ghi bù được mô tả riêng trong [log triển khai chuyển tiếp](2026-09-13-decision-pipeline-backfill.md).
 
 ## Đầu ra và kiểm chứng
 
@@ -45,6 +64,9 @@ Hash và thứ tự commit được tra cứu trực tiếp bằng `git log --on
   hạn kết nối 5 giây qua biến môi trường của tiến trình test.
 - Ruff lint và format đạt cho toàn bộ `backend` và `scripts`.
 - Chỉ xóa dòng trống cuối file sau kiểm thử; không thay đổi hành vi đã kiểm chứng.
+
+Kết quả 101 kiểm thử nêu trên thuộc đợt commit ngày 12/09/2026. Không dùng kết quả
+này để khẳng định các thay đổi kiến trúc chưa commit sau đó đã vượt qua kiểm thử.
 
 ## Các file và dòng đã sửa trong lượt này
 
