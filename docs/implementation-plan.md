@@ -1,5 +1,9 @@
 # Milestone 1 implementation contract
 
+> Historical contract. The active workflow and scope are now defined by
+> [transitional architecture](architecture.md), following [architect-review-comparison](architect-review-comparison).
+> Driver explanation writes and default per-driver case aggregation have been superseded.
+
 ## Plan
 
 1. Define SQLAlchemy entities, UTC timestamps, constraints, and an explicit Alembic migration.

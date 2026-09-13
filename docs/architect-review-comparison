@@ -1,0 +1,930 @@
+Dựa trên `architecture.md` + `data-model.md`, kiến trúc hiện tại trong implementation của bạn là một **FastAPI modular monolith đồng bộ, rule-based, PostgreSQL-centric**. `new_architecture.md` đưa hệ thống sang mô hình **AI-first fraud platform**, trong đó detection, decision policy và case management được tách rõ hơn, Human-in-the-loop chỉ xử lý exception.   
+
+## 1. So sánh tổng thể
+
+| Thành phần     | Kiến trúc hiện tại                | `new_architecture`                   | Mức thay đổi    |
+| -------------- | --------------------------------- | ------------------------------------ | --------------- |
+| Backend        | 1 FastAPI application             | Modular Monolith FastAPI             | 🟢 Giữ được     |
+| Database       | PostgreSQL                        | PostgreSQL + Redis + Object Storage  | 🟡 Mở rộng      |
+| Detection      | Deterministic rules               | Rules + ML + Anomaly Detection + DL  | 🔴 Thay đổi lớn |
+| Processing     | Batch CLI / synchronous           | Data Processing + AI Workers         | 🔴              |
+| Messaging      | Không có                          | Message Broker                       | 🔴 Mới          |
+| Scoring        | Category weights, 0–100           | Risk + confidence + probability      | 🟡/🔴           |
+| Signal         | Có `Signal`                       | Có `Signal`                          | 🟢              |
+| Alert          | Không có entity rõ ràng           | Signal → Alert → Case                | 🔴 Mới          |
+| Case           | Signal → Case trực tiếp           | Alert → Decision → Case              | 🔴              |
+| HITL           | Gần như tất cả case đi vào review | Chỉ exception/high-impact            | 🔴              |
+| Auto decision  | Không                             | Auto Clear / Auto Fraud              | 🔴              |
+| Driver         | Có explanation workflow           | Không tham gia application           | 🔴              |
+| Fraud taxonomy | Category-based                    | Category → Type → Signal             | 🟡              |
+| Evidence       | Rất mạnh                          | Tiếp tục cần                         | 🟢 Giữ          |
+| Audit          | Có                                | Có                                   | 🟢              |
+| AI versioning  | Không đáng kể                     | `model_version`                      | 🔴 Mới          |
+| Feedback loop  | Không                             | Human result → training              | 🔴              |
+| Scale          | ~5.000 trips in-memory batch      | Event/worker-oriented                | 🔴              |
+| Microservices  | Không                             | Chưa cần ngay                        | 🟢              |
+| Java           | Không                             | Có thể thêm cho business backend sau | ⚪ Future        |
+
+Điểm quan trọng là **`new_architecture` không phải rewrite toàn bộ hệ thống hiện tại**. Phần case/evidence/database foundation của bạn khá tốt; thay đổi lớn nhất nằm **ở phía trước Fraud Case**.
+
+---
+
+# 2. Luồng hiện tại
+
+Implementation hiện tại về bản chất đang chạy:
+
+```text
+Source Data
+    │
+    ▼
+Driver Observations
+    │
+    ▼
+Deterministic Rules
+GPS / repeat / device / promotion
+    │
+    ▼
+Signals
+    │
+    ▼
+Category Scoring
+    │
+    ▼
+Fraud Case
+    │
+    ▼
+Human Review
+    │
+    ▼
+Driver Explanation
+    │
+    ▼
+Reviewer Decision
+```
+
+Đây chính xác là flow được mô tả trong `architecture.md`. Detector là deterministic, không chứa SQL/HTTP; scoring được tách riêng và engine aggregate signal rồi persist case/evidence. 
+
+Có thể rút gọn thành:
+
+```text
+RULES
+  ↓
+SIGNALS
+  ↓
+CASE
+  ↓
+HUMAN
+```
+
+Trong khi kiến trúc mới là:
+
+```text
+DATA
+ │
+ ▼
+PROCESSING
+ │
+ ▼
+             AI FRAUD ENGINE
+       ┌────────┼───────────┐
+       ▼        ▼           ▼
+     Rules     ML        Anomaly
+       └────────┼───────────┘
+                ▼
+        Risk / Confidence
+                │
+                ▼
+        Decision Engine
+        ┌───────┼─────────┐
+        ▼       ▼         ▼
+      CLEAR   FRAUD     REVIEW
+                │         │
+                └────┬────┘
+                     ▼
+                  CASE
+```
+
+
+
+Đây là khác biệt kiến trúc quan trọng nhất.
+
+---
+
+# 3. Hiện tại `Case` được tạo quá sớm
+
+Code hiện tại có conceptual pipeline:
+
+```text
+Detector
+   ↓
+Signal
+   ↓
+FraudCase
+```
+
+Detector tạo `Signal`, engine aggregate các signal của driver và tạo một case. 
+
+Trong kiến trúc mới:
+
+```text
+Signal
+   │
+   ▼
+Alert
+   │
+   ▼
+Decision Policy
+   │
+   ├── Auto Clear
+   │
+   ├── Auto Fraud
+   │
+   └── Human Review
+            │
+            ▼
+           Case
+```
+
+
+
+Tách ba khái niệm này rất đáng làm.
+
+```text
+Signal
+"GPS jump 5km trong 3 giây"
+
+        ↓ correlation
+
+Alert
+"Potential GPS spoofing"
+
+        ↓ policy
+
+Case
+"FC-1039 cần xử lý"
+```
+
+Hiện tại `Alert` gần như chưa tồn tại.
+
+### Đây là boundary tôi sẽ ưu tiên sửa đầu tiên.
+
+Nếu sau này có 50 detector thì không thể để:
+
+```text
+Detector → Case
+```
+
+vì số lượng case có thể tăng rất mạnh.
+
+Nên chuyển sang:
+
+```text
+Detectors
+    ↓
+Signals
+    ↓
+Correlation / Alert
+    ↓
+Decision
+    ↓
+Case if necessary
+```
+
+---
+
+# 4. AI hiện tại thực chất chưa phải AI-first
+
+`architecture.md` hiện tại mô tả các detector:
+
+```text
+GPS detector
+repeat detector
+device detector
+promotion detector
+```
+
+với đặc điểm:
+
+```text
+Pure
+Deterministic
+Measurable
+```
+
+
+
+Đây là **Rule Engine**, chưa phải AI Fraud Engine theo kiến trúc mới.
+
+Hiện tại:
+
+```text
+IF speed > threshold
+    → impossible_speed
+
+IF device reused unusually
+    → device signal
+```
+
+Kiến trúc mới muốn:
+
+```text
+                    Observation
+                         │
+       ┌─────────────────┼──────────────────┐
+       ▼                 ▼                  ▼
+    Rules           ML Classifier     Anomaly Model
+       │                 │                  │
+       └─────────────────┼──────────────────┘
+                         ▼
+                      Ensemble
+                         │
+                         ▼
+                Fraud Probability
+                Risk
+                Confidence
+```
+
+
+
+Đây là extension hợp lý chứ không cần bỏ Rule Engine.
+
+Rule Engine hiện tại có thể trở thành:
+
+```text
+Fraud Engine
+│
+├── RuleDetectorAdapter
+│      ├── GPSDetector
+│      ├── DeviceDetector
+│      └── PromotionDetector
+│
+├── MLDetector
+│
+└── AnomalyDetector
+```
+
+Tức là code rule detection hiện tại vẫn có giá trị.
+
+---
+
+# 5. `risk_score` hiện tại khác `confidence`
+
+Đây là chỗ rất dễ nhầm.
+
+Data model hiện tại có:
+
+```text
+fraud_cases
+├── primary_category
+├── fraud_types/categories
+├── risk_score 0–100
+├── category contributions
+└── rule settings
+```
+
+và scoring hiện tại dựa trên **weight của category**, mỗi category chỉ contribution một lần dù có nhiều duplicate signal.  
+
+Nó chưa có khái niệm độc lập:
+
+```text
+fraud_probability
+confidence
+impact
+model_version
+```
+
+Trong kiến trúc mới, bốn thứ này có ý nghĩa khác nhau:
+
+```text
+risk
+    = case nguy hiểm tới mức nào?
+
+fraud_probability
+    = khả năng đây thực sự là fraud?
+
+confidence
+    = AI chắc chắn tới đâu về dự đoán?
+
+impact
+    = hậu quả nếu hệ thống quyết định sai / fraud xảy ra?
+```
+
+Ví dụ:
+
+```text
+fraud_probability = 0.97
+confidence        = 0.95
+impact            = LOW
+
+→ có thể AUTO FRAUD
+```
+
+nhưng:
+
+```text
+fraud_probability = 0.98
+confidence        = 0.96
+impact            = CRITICAL
+
+→ vẫn HUMAN APPROVAL
+```
+
+Kiến trúc hiện tại chưa có Decision Policy đủ để làm điều này.
+
+---
+
+# 6. HITL đang đảo chiều so với mục tiêu mới
+
+Đây là thay đổi business architecture lớn nhất.
+
+Kiến trúc hiện tại định nghĩa workflow:
+
+```text
+detected
+   ↓
+under_review
+   ↓
+awaiting_driver_explanation
+   ↓
+driver_responded
+   ↓
+confirmed_fraud / dismissed
+```
+
+
+
+Database thậm chí có:
+
+```text
+driver_explanations
+case_decisions
+case_status_events
+```
+
+
+
+Trong khi chúng ta đã thống nhất trong kiến trúc mới:
+
+```text
+Driver ≠ application user
+```
+
+và:
+
+```text
+AI Result
+   │
+   ▼
+Decision Engine
+   │
+   ├── AUTO CLEAR
+   │
+   ├── AUTO FRAUD
+   │
+   └── HUMAN REVIEW
+```
+
+
+
+Do đó `driver_explanations` và trạng thái:
+
+```text
+awaiting_driver_explanation
+driver_responded
+```
+
+không còn phù hợp với domain mới.
+
+Đây không phải chỉnh sửa nhỏ mà là một **workflow redesign**.
+
+---
+
+# 7. Human hiện tại là default path, kiến trúc mới là exception path
+
+Hiện tại:
+
+```text
+Detected Case
+      │
+      ▼
+Human reviewer
+```
+
+gần như là luồng chính.
+
+Kiến trúc mới:
+
+```text
+                     AI Decision
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+     AUTO CLEAR       AUTO FRAUD      UNCERTAIN
+                                           │
+                                           ▼
+                                      HUMAN REVIEW
+```
+
+Và fraud có confidence cao nhưng impact cao có thể vẫn yêu cầu approval. 
+
+Kiến trúc mới vì vậy có khả năng scale tốt hơn rất nhiều.
+
+Ví dụ 1 triệu transaction/ngày thì không thể:
+
+```text
+1M
+ ↓
+Detection
+ ↓
+50,000 cases
+ ↓
+Humans review 50,000
+```
+
+Mục tiêu phải là:
+
+```text
+1M events
+   ↓
+AI
+   ↓
+Auto decisions
+   ↓
+~small exception %
+   ↓
+Human
+```
+
+---
+
+# 8. Fraud taxonomy hiện tại đã đi đúng hướng nhưng chưa đủ
+
+Phần này code hiện tại khá tốt.
+
+Hiện tại case đã có:
+
+```text
+primary_category
+fraud_types / all categories
+evidences
+```
+
+và case có thể giữ nhiều category. 
+
+Database cũng cho phép evidence có `category`, `rule_name`, severity và source. 
+
+Kiến trúc mới formalize thành:
+
+```text
+Fraud Category
+     │
+     ▼
+Fraud Type
+     │
+     ▼
+Fraud Signal
+```
+
+Ví dụ:
+
+```text
+LOCATION_FRAUD
+      │
+      └── GPS_SPOOFING
+              │
+              ├── impossible_speed
+              ├── location_jump
+              └── route_mismatch
+```
+
+
+
+Tôi sẽ không bỏ thiết kế hiện tại mà nâng cấp nó.
+
+```text
+Hiện tại
+
+category
+   ↓
+rule
+
+↓
+
+Mới
+
+category
+   ↓
+fraud_type
+   ↓
+signal_type / rule
+```
+
+---
+
+# 9. Evidence architecture hiện tại rất đáng giữ
+
+Đây là một trong những phần được thiết kế tốt nhất trong code hiện tại.
+
+Hiện tại bạn có:
+
+```text
+fraud_case
+    │
+    └── fraud_evidence
+            │
+            └── evidence_source
+                    │
+                    ├── driver
+                    ├── trip
+                    ├── GPS
+                    ├── device
+                    └── promotion
+```
+
+Các source link được bảo vệ bằng foreign key, evidence là snapshot, primary source cũng được lưu trong `evidence_sources`. 
+
+Tôi **giữ gần như nguyên kiến trúc này**.
+
+Sau này ML có thể sinh:
+
+```text
+Evidence
+│
+├── evidence_type = MODEL_FEATURE
+├── model_version = gps-anomaly-v4
+├── score = 0.93
+├── features
+│      ├── max_speed
+│      ├── route_deviation
+│      └── gps_jump_count
+│
+└── source references
+       ├── GPS #1
+       ├── GPS #2
+       └── Trip #172
+```
+
+Nghĩa là AI không thay evidence architecture; nó chỉ tạo thêm loại evidence.
+
+---
+
+# 10. Data architecture thay đổi
+
+Hiện tại rất đơn giản:
+
+```text
+FastAPI
+   │
+   ▼
+PostgreSQL
+```
+
+Batch engine load dataset vào memory và được thiết kế cho khoảng **5.000 trips**, không dành cho historical ingestion không giới hạn. 
+
+Kiến trúc mới:
+
+```text
+Data Sources
+     │
+     ▼
+Ingestion
+     │
+     ▼
+Message Broker
+     │
+     ▼
+Processing Workers
+     │
+     ▼
+Fraud Engine
+```
+
+và data layer:
+
+```text
+PostgreSQL
+Redis
+Object Storage
+```
+
+
+
+Tuy nhiên đây là nơi tôi sẽ **không implement toàn bộ ngay lập tức**.
+
+Giai đoạn hiện tại chưa cần:
+
+```text
+Kafka cluster
+Kubernetes
+20 microservices
+```
+
+Có thể đi qua bước trung gian:
+
+```text
+              FastAPI
+                 │
+       ┌─────────┴─────────┐
+       │                   │
+ Case / Review          Fraud Engine
+       │                   │
+       └─────────┬─────────┘
+                 │
+             PostgreSQL
+
+       + Python background worker
+```
+
+Sau đó mới thêm:
+
+```text
+Redis / RabbitMQ
+```
+
+khi detection cần chạy async.
+
+---
+
+# 11. Data model hiện tại cần thay đổi ở đâu?
+
+Nếu map trực tiếp database hiện tại sang architecture mới:
+
+```text
+drivers                       KEEP
+trips                         KEEP
+gps_events                    KEEP
+devices                       KEEP
+driver_devices                KEEP
+promotions                    KEEP
+
+fraud_cases                   MODIFY
+fraud_evidences               KEEP + EXTEND
+evidence_sources              KEEP
+driver_explanations           REMOVE / DEPRECATE
+case_decisions                MODIFY
+case_status_events            KEEP
+```
+
+Sau đó bổ sung conceptual entities:
+
+```text
+fraud_signals
+      │
+      ▼
+fraud_alerts
+      │
+      ▼
+decision_results
+      │
+      ▼
+fraud_cases
+```
+
+Có thể thêm:
+
+```text
+model_predictions
+model_versions
+review_assignments
+```
+
+Nhưng tôi **không khuyên tạo tất cả bảng ngay lập tức**. `Signal` ban đầu thậm chí có thể tiếp tục tồn tại như domain object và chỉ persist khi cần audit/debug.
+
+---
+
+# 12. Một thay đổi domain rất quan trọng
+
+Hiện tại architecture nói:
+
+> A driver's signals form one aggregate case.
+
+
+
+Điều này có thể trở thành giới hạn khi hệ thống lớn.
+
+Ví dụ driver:
+
+```text
+D001
+```
+
+có fraud:
+
+```text
+08:00 GPS spoofing trip A
+
+14:00 promotion abuse trip B
+
+3 ngày sau account sharing
+```
+
+Không nên mặc định gom tất cả thành một case chỉ vì cùng driver.
+
+Architecture mới nên để Case Boundary được xác định bởi correlation:
+
+```text
+Driver
+  │
+  ├── Case A
+  │      └── GPS Spoofing
+  │
+  ├── Case B
+  │      └── Promotion Abuse
+  │
+  └── Case C
+         └── Account Sharing
+```
+
+hoặc một case có nhiều type **chỉ khi signals thực sự có quan hệ**.
+
+Đây là thay đổi tôi đánh giá quan trọng thứ hai sau Signal → Alert → Case.
+
+---
+
+# 13. Phần nào không cần rewrite
+
+Nếu biểu diễn toàn bộ hệ thống hiện tại:
+
+```text
+CURRENT
+
+┌────────────────────────────────────────────┐
+│              FastAPI                       │
+│                                            │
+│ API                                        │
+│ Services                                   │
+│                                            │
+│ Fraud Engine                               │
+│ ├── detectors       ← KEEP                 │
+│ ├── signals         ← KEEP / EXTEND        │
+│ ├── scoring         ← REWORK               │
+│ └── engine          ← REWORK               │
+│                                            │
+│ Case services        ← KEEP / EXTEND       │
+│ Evidence services    ← KEEP                │
+│ Review workflow      ← REWORK              │
+└────────────────────────────────────────────┘
+                  │
+                  ▼
+             PostgreSQL
+```
+
+Target:
+
+```text
+NEW
+
+                     DATA
+                      │
+                      ▼
+              Processing Layer
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│              FRAUD ENGINE                   │
+│                                             │
+│ Existing rules ───────────────┐             │
+│ ML classifier ────────────────┤             │
+│ Anomaly detector ─────────────┤             │
+│                               ▼             │
+│                           Ensemble          │
+└───────────────────────────────┬─────────────┘
+                                │
+                      Signal / Alert
+                                │
+                                ▼
+                       Decision Engine
+                  ┌─────────────┼─────────────┐
+                  ▼             ▼             ▼
+               CLEAR          FRAUD         REVIEW
+                                │             │
+                                └──────┬──────┘
+                                       ▼
+                                  Fraud Case
+                                       │
+                         ┌─────────────┼─────────────┐
+                         ▼             ▼             ▼
+                      Evidence       Review        Audit
+```
+
+---
+
+# 14. Đánh giá mức độ chênh lệch
+
+Tôi sẽ đánh giá:
+
+| Layer                   | Khoảng cách hiện tại → target |
+| ----------------------- | ----------------------------: |
+| PostgreSQL source model |                       **20%** |
+| Evidence model          |                       **15%** |
+| Fraud taxonomy          |                       **30%** |
+| Case management         |                       **40%** |
+| Review workflow         |                       **70%** |
+| Detection architecture  |                       **65%** |
+| Decision engine         |                       **90%** |
+| ML/AI                   |                       **90%** |
+| Async processing        |                       **90%** |
+| Monitoring / feedback   |                       **95%** |
+| Infrastructure          |                       **70%** |
+
+Nhưng đây **không có nghĩa 70–90% code phải rewrite**.
+
+Phần business/domain foundation hiện tại vẫn có giá trị lớn.
+
+---
+
+# 15. Kiến trúc chuyển tiếp tôi khuyên dùng
+
+Không nên nhảy thẳng từ hiện tại sang Kafka + ML + microservices.
+
+Tôi sẽ tiến hóa theo:
+
+```text
+                    ┌──────────────────────┐
+                    │      FastAPI         │
+                    │  Modular Monolith    │
+                    └──────────┬───────────┘
+                               │
+             ┌─────────────────┼──────────────────┐
+             │                 │                  │
+             ▼                 ▼                  ▼
+        Case Module       Review Module       Audit Module
+                              
+                               │
+                               ▼
+                     ┌─────────────────┐
+                     │ Decision Engine │
+                     └────────┬────────┘
+                              │
+                              ▼
+                     ┌─────────────────┐
+                     │  Fraud Engine   │
+                     │                 │
+                     │ Existing Rules  │
+                     │ + ML later      │
+                     └────────┬────────┘
+                              │
+                              ▼
+                   PostgreSQL + Redis
+```
+
+Sau đó mới chuyển Fraud Engine thành worker:
+
+```text
+                         FastAPI
+                            │
+                            ▼
+                       Broker/Queue
+                            │
+                            ▼
+                    Python AI Worker
+                            │
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+          Rules             ML            Anomaly
+```
+
+Đây vẫn đúng với định hướng `new_architecture`: **Modular Monolith + asynchronous AI workers**, chưa cần microservices toàn phần. 
+
+---
+
+# Kết luận
+
+Kiến trúc code hiện tại **không phải kiến trúc sai**. Nó thực chất là một **MVP foundation khá tốt** cho architecture mới:
+
+```text
+CURRENT
+Rules
+  ↓
+Signal
+  ↓
+Score
+  ↓
+Case
+  ↓
+Human
+
+        │
+        │ evolve
+        ▼
+
+TARGET
+Rules + ML + Anomaly
+        ↓
+      Signals
+        ↓
+      Alerts
+        ↓
+ Risk + Confidence
+        ↓
+ Decision Engine
+   ┌────┼────┐
+   ▼    ▼    ▼
+ Clear Fraud HITL
+        ↓
+      Case
+```
+
+Ba thay đổi kiến trúc quan trọng nhất tôi sẽ làm trước là **(1) tách `Signal → Alert → Case`, (2) thêm `Decision Engine` để Human Review trở thành exception thay vì default, và (3) loại bỏ `driver explanation` khỏi workflow vì tài xế không còn là actor của ứng dụng**. Sau ba thay đổi này mới đáng đưa ML/anomaly detection và asynchronous workers vào.
+
+Điểm tốt là **FastAPI, PostgreSQL, detector rules, evidence/source-reference model, audit mechanism và modular-monolith approach đều có thể tiếp tục sử dụng**; chưa có lý do kỹ thuật để rewrite backend sang Java hay tách microservices ở giai đoạn này.  
