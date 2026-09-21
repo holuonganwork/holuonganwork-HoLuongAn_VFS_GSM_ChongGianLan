@@ -260,6 +260,17 @@ Vite proxies `/api/*` to the backend. The map remains available without an API c
 metrics report unavailable data rather than displaying demo values. Data views are read-only.
 See the frontend README for configuration, extension points, build and browser checks.
 
+## Basic admin and driver interfaces
+
+The [frontend-basic prototype](frontend-basic/README.md) provides two Vietnamese interfaces:
+an admin inbox for receiving explanations and a driver portal for viewing requests and responding.
+Run `npm.cmd --prefix frontend-basic run dev`, then open **http://127.0.0.1:5174/admin/** or
+**http://127.0.0.1:5174/driver/** (use `npm` on macOS/Linux).
+
+This separate frontend uses browser-local sample data and supports drafts, attachments, receipts,
+supplement requests and responses across tabs. It does not connect to the current backend;
+authentication and server-side explanation APIs remain integration work.
+
 ## Development boundaries
 
 No uploads, broker/worker service, Redis/object storage, external payment integration,
